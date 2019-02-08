@@ -188,6 +188,24 @@ void fem::impl::assemble_exterior_facets(
     Eigen::Map<const Eigen::Array<PetscInt, Eigen::Dynamic, 1>> dmap1
         = dofmap1.cell_dofs(cell_index);
 
+    // Reorder coordinates so that exterior facet is facet 0
+
+    int ncoords = coordinate_dofs.rows();
+    Eigen::Map<
+        Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>
+        cdofs_matrix(coordinate_dofs.data(), coordinate_dofs.rows(),
+                     coordinate_dofs.cols());
+
+    // FIXME: need more general solution for all geometries...
+    // This may? work OK for tri/tet
+    // Reorder coordinates so that the integral is always on facet 0
+
+    Eigen::Transpositions<Eigen::Dynamic> coord_perm(ncoords);
+    for (int i = 0; i < ncoords; ++i)
+      coord_perm[i] = (i + local_facet) % ncoords;
+
+    cdofs_matrix = coord_perm * cdofs_matrix;
+
     // Update coefficients
     for (std::size_t i = 0; i < coefficients.size(); ++i)
     {
@@ -197,7 +215,11 @@ void fem::impl::assemble_exterior_facets(
 
     // Tabulate tensor
     Ae.setZero(dmap0.size(), dmap1.size());
-    fn(Ae.data(), coeff_array.data(), coordinate_dofs.data(), local_facet, 1);
+
+    // Set local_facet=0
+    fn(Ae.data(), coeff_array.data(), coordinate_dofs.data(), 0, 1);
+
+    // FIXME: permute Ae
 
     // Zero rows/columns for essential bcs
     if (!bc0.empty())
