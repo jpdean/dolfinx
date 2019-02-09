@@ -190,21 +190,15 @@ void fem::impl::assemble_exterior_facets(
 
     // Reorder coordinates so that exterior facet is facet 0
 
-    int ncoords = coordinate_dofs.rows();
-    Eigen::Map<
-        Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>
-        cdofs_matrix(coordinate_dofs.data(), coordinate_dofs.rows(),
-                     coordinate_dofs.cols());
-
     // FIXME: need more general solution for all geometries...
-    // This may? work OK for tri/tet
+    // This may? work OK for linear tri/tet
     // Reorder coordinates so that the integral is always on facet 0
-
+    const int ncoords = coordinate_dofs.rows();
     Eigen::Transpositions<Eigen::Dynamic> coord_perm(ncoords);
     for (int i = 0; i < ncoords; ++i)
       coord_perm[i] = (i + local_facet) % ncoords;
 
-    cdofs_matrix = coord_perm * cdofs_matrix;
+    coordinate_dofs.matrix() = coord_perm * coordinate_dofs.matrix();
 
     // Update coefficients
     for (std::size_t i = 0; i < coefficients.size(); ++i)
