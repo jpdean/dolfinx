@@ -185,6 +185,14 @@ int main(int argc, char* argv[])
       std::make_shared<fem::DofMap>(
           std::shared_ptr<ufc_dofmap>(space->dofmap()), *mesh));
 
+  auto kappa_space = std::unique_ptr<dolfin_function_space>(PoissonCoefficientSpace_kappa());
+  auto R = std::make_shared<function::FunctionSpace>(
+      mesh,
+      std::make_shared<fem::FiniteElement>(
+          std::shared_ptr<ufc_finite_element>(kappa_space->element())),
+      std::make_shared<fem::DofMap>(
+          std::shared_ptr<ufc_dofmap>(kappa_space->dofmap()), *mesh));
+
   // Now, the Dirichlet boundary condition (:math:`u = 0`) can be created
   // using the class :cpp:class:`DirichletBC`. A :cpp:class:`DirichletBC`
   // takes three arguments: the function space the boundary condition
@@ -237,6 +245,13 @@ int main(int argc, char* argv[])
 
   f->interpolate(f_expr);
   g->interpolate(g_expr);
+
+  auto kappa = std::make_shared<function::Function>(R);
+  VecSet(kappa->vector().vec(), 0.1);
+
+  a->set_coefficient_index_to_name_map(form_a->coefficient_number_map);
+  a->set_coefficient_name_to_index_map(form_a->coefficient_name_map);
+  a->set_coefficients({{"kappa", kappa}});
 
   L->set_coefficient_index_to_name_map(form_L->coefficient_number_map);
   L->set_coefficient_name_to_index_map(form_L->coefficient_name_map);
