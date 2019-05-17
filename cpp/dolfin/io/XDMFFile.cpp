@@ -468,8 +468,8 @@ void XDMFFile::write(const function::Function& u)
   // If counter is non-zero, a time series has been saved before
   if (_counter != 0)
   {
-    throw std::runtime_error("Cannot write function::Function to XDMF. "
-                             "Not writing a time series");
+    throw std::runtime_error(
+        "Cannot write function::Function to XDMF. Not writing a time series");
   }
 
   const mesh::Mesh& mesh = *u.function_space()->mesh();
@@ -482,12 +482,10 @@ void XDMFFile::write(const function::Function& u)
   std::unique_ptr<HDF5File> h5_file;
   if (_encoding == Encoding::HDF5)
   {
-    // Open file
+    // Open file and get file handle
     h5_file = std::make_unique<HDF5File>(
         mesh.mpi_comm(), xdmf_utils::get_hdf5_filename(_filename), "w");
     assert(h5_file);
-
-    // Get file handle
     h5_id = h5_file->h5_id();
   }
 
@@ -517,7 +515,6 @@ void XDMFFile::write(const function::Function& u)
   // Add attribute DataItem node and write data
   std::int64_t width = get_padded_width(u);
   assert(data_values.size() % width == 0);
-
   const std::int64_t num_points = mesh.geometry().num_points_global();
   const std::int64_t num_values
       = cell_centred ? mesh.num_entities_global(mesh.topology().dim())
@@ -531,10 +528,18 @@ void XDMFFile::write(const function::Function& u)
   for (const std::string component : components)
   {
     std::string attr_name;
+    std::string dataset_name;
     if (component.empty())
+    {
       attr_name = u.name();
+      dataset_name = "/VisualisationVector/" + std::to_string(0);
+    }
     else
+    {
       attr_name = component + "_" + u.name();
+      dataset_name
+          = "/VisualisationVector/" + component + "/" + std::to_string(0);
+    }
 
     // Add attribute node of the current component
     pugi::xml_node attribute_node = grid_node.append_child("Attribute");
@@ -556,13 +561,13 @@ void XDMFFile::write(const function::Function& u)
     }
     // Add data item of component
     xdmf_write::add_data_item(_mpi_comm.comm(), attribute_node, h5_id,
-                              "/VisualisationVector/" + component + "/0",
-                              component_data_values, {num_values, width}, "");
+                              dataset_name, component_data_values,
+                              {num_values, width}, "");
 #else
     // Add data item
     xdmf_write::add_data_item(_mpi_comm.comm(), attribute_node, h5_id,
-                              "/VisualisationVector/0", data_values,
-                              {num_values, width}, "");
+                              dataset_name, data_values, {num_values, width},
+                              "");
 #endif
   }
 
@@ -604,8 +609,10 @@ void XDMFFile::write(const function::Function& u, double time_step)
   {
     // Truncate the file the first time
     if (_counter == 0)
+    {
       _hdf5_file = std::make_unique<HDF5File>(
           mesh.mpi_comm(), xdmf_utils::get_hdf5_filename(_filename), "w");
+    }
     else if (flush_output)
     {
       // Append to existing HDF5 file
@@ -613,7 +620,7 @@ void XDMFFile::write(const function::Function& u, double time_step)
       _hdf5_file = std::make_unique<HDF5File>(
           mesh.mpi_comm(), xdmf_utils::get_hdf5_filename(_filename), "a");
     }
-    else if ((_counter != 0) and (!_hdf5_file))
+    else if ((_counter != 0) and !_hdf5_file)
     {
       // The XDMFFile was previously closed, and now must be reopened
       _hdf5_file = std::make_unique<HDF5File>(
@@ -701,7 +708,6 @@ void XDMFFile::write(const function::Function& u, double time_step)
   // Get function::Function data values and shape
   std::vector<PetscScalar> data_values;
   bool cell_centred = has_cell_centred_data(u);
-
   if (cell_centred)
     data_values = xdmf_utils::get_cell_data_values(u);
   else
@@ -719,7 +725,6 @@ void XDMFFile::write(const function::Function& u, double time_step)
 #else
   std::vector<std::string> components = {""};
 #endif
-
   for (const std::string component : components)
   {
     std::string attr_name;
