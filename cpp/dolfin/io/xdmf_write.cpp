@@ -17,7 +17,6 @@
 #include <dolfin/fem/GenericDofMap.h>
 #include <dolfin/function/Function.h>
 #include <dolfin/function/FunctionSpace.h>
-#include <dolfin/geometry/Point.h>
 #include <dolfin/mesh/DistributedMeshTools.h>
 #include <dolfin/mesh/Mesh.h>
 #include <dolfin/mesh/MeshIterator.h>
@@ -461,7 +460,7 @@ xdmf_write::compute_nonlocal_entities(const mesh::Mesh& mesh, int cell_dim)
 //-----------------------------------------------------------------------------
 void xdmf_write::add_points(MPI_Comm comm, pugi::xml_node& xdmf_node,
                             hid_t h5_id,
-                            const std::vector<geometry::Point>& points)
+                            const std::vector<Eigen::Vector3d>& points)
 {
   xdmf_node.append_attribute("Version") = "3.0";
   xdmf_node.append_attribute("xmlns:xi") = "http://www.w3.org/2001/XInclude";
@@ -583,23 +582,28 @@ void xdmf_write::add_geometry_data(MPI_Comm comm, pugi::xml_node& xml_node,
   EigenRowArrayXXd _x = mesh::DistributedMeshTools::reorder_by_global_indices(
       mesh.mpi_comm(), mesh.geometry().points(),
       mesh.geometry().global_indices());
-  std::vector<double> x(_x.data(), _x.data() + _x.size());
 
-  // XDMF does not support 1D, so handle as special case
-  if (gdim == 1)
+  // Increase 1D to 2D because XDMF has no "X" geometry, use "XY"
+  int width = (gdim == 1) ? 2 : gdim;
+
+  std::size_t num_values = _x.rows() * width;
+  std::vector<double> x(num_values, 0.0);
+
+  if (width == 3)
+    std::copy(_x.data(), _x.data() + _x.size(), x.begin());
+  else
   {
-    // Pad the coordinates with zeros for a dummy Y
-    gdim = 2;
-    std::vector<double> _x(2 * x.size(), 0.0);
-    for (std::size_t i = 0; i < x.size(); ++i)
-      _x[2 * i] = x[i];
-    std::swap(x, _x);
+    for (int i = 0; i < _x.rows(); ++i)
+    {
+      for (int j = 0; j < gdim; ++j)
+        x[width * i + j] = _x(i, j);
+    }
   }
 
   // Add geometry DataItem node
   const std::string group_name = path_prefix + "/" + "mesh";
   const std::string h5_path = group_name + "/geometry";
-  const std::vector<std::int64_t> shape = {num_points, gdim};
+  const std::vector<std::int64_t> shape = {num_points, width};
 
   xdmf_write::add_data_item(comm, geometry_node, h5_id, h5_path, x, shape, "");
 }
