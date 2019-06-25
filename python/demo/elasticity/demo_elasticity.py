@@ -14,8 +14,8 @@ import numpy as np
 from petsc4py import PETSc
 
 import dolfin
-from dolfin import (MPI, BoxMesh, CellType, DirichletBC, Function,
-                    TestFunction, TrialFunction, VectorFunctionSpace, TensorFunctionSpace, cpp)
+from dolfin import (MPI, DirichletBC, Function, TestFunction, TrialFunction,
+                    VectorFunctionSpace, TensorFunctionSpace, cpp)
 from dolfin.fem import apply_lifting, assemble_matrix, assemble_vector, set_bc, project
 from dolfin.io import XDMFFile
 from dolfin.la import PETScKrylovSolver, PETScOptions, VectorSpaceBasis
@@ -67,7 +67,7 @@ mesh = xdmf.read_mesh(MPI.comm_world, dolfin.cpp.mesh.GhostMode.none)
 
 
 def boundary(x, on_boundary):
-    r2 = (3.75 - x[:, 2]*0.17)**2
+    r2 = (3.75 - x[:, 2] * 0.17)**2
     R = x[:, 0]**2 + x[:, 1]**2
     return (R[:] < r2[:])
 #    return np.logical_or(x[:, 0] < 10.0 * np.finfo(float).eps,
