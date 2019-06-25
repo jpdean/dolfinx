@@ -122,11 +122,9 @@ W = FunctionSpace(mesh, TH)
 # x1 = 0, x1 = 1 and around the dolphin
 
 
-class NoSlip:
+def noslip_eval(values, x):
     """Evaluate the no-slip condition"""
-
-    def eval(self, values, x):
-        values[:, :] = 0.0
+    values[:, :] = 0.0
 
 
 # Extract subdomain facet arrays
@@ -134,10 +132,7 @@ mf = sub_domains.array()
 mf0 = np.where(mf == 0)
 mf1 = np.where(mf == 1)
 
-# noslip_expr = Expression(noslip_eval, shape=(2,))
-noslip_expr = NoSlip()
-noslip = interpolate(noslip_expr.eval, W.sub(0).collapse())
-
+noslip = interpolate(noslip_eval, W.sub(0).collapse())
 bc0 = DirichletBC(W.sub(0), noslip, mf0[0])
 
 # Inflow boundary condition for velocity

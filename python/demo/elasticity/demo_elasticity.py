@@ -15,11 +15,11 @@ from petsc4py import PETSc
 
 import dolfin
 from dolfin import (MPI, BoxMesh, CellType, DirichletBC, Function,
-                    TestFunction, TrialFunction, VectorFunctionSpace, cpp)
-from dolfin.fem import apply_lifting, assemble_matrix, assemble_vector, set_bc
+                    TestFunction, TrialFunction, VectorFunctionSpace, TensorFunctionSpace, cpp)
+from dolfin.fem import apply_lifting, assemble_matrix, assemble_vector, set_bc, project
 from dolfin.io import XDMFFile
 from dolfin.la import PETScKrylovSolver, PETScOptions, VectorSpaceBasis
-from ufl import Identity, as_vector, dx, grad, inner, sym, tr
+from ufl import Identity, as_vector, dx, grad, inner, sym, tr, SpatialCoordinate
 
 
 def build_nullspace(V):
@@ -80,13 +80,12 @@ def boundary(x, on_boundary):
 
 
 # Rotation rate and mass density
-omega = 300.0
+omega = 3000.0
 rho = 10.0
 
 # Loading due to centripetal acceleration (rho*omega^2*x_i)
-# f = Expression(("rho*omega*omega*x[0]", "rho*omega*omega*x[1]", "0.0"),
-
-f = as_vector((0.0, 1.0E+10, 0.0))
+x = SpatialCoordinate(mesh)
+f = as_vector((rho*omega**2*x[0], rho*omega**2*x[1], 0.0))
 
 # Elasticity parameters
 E = 1.0e9
@@ -177,8 +176,8 @@ if MPI.rank(mesh.mpi_comm()) == 0:
 #                                           MPI.rank(mesh.mpi_comm()))
 
 # Project and write stress field to post-processing file
-# W = TensorFunctionSpace(mesh, "Discontinuous Lagrange", 0)
-# stress = project(sigma(u), V=W)
+W = TensorFunctionSpace(mesh, ("Discontinuous Lagrange", 0))
+stress = project(sigma(u), V=W)
 # File("stress.pvd") << stress
 
 # Plot solution
