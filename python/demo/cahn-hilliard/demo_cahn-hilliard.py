@@ -5,9 +5,8 @@
 # :download:`demo_cahn-hilliard.py`, which contains both the variational
 # forms and the solver.
 #
-# This example demonstrates the solution of a particular nonlinear
-# time-dependent fourth-order equation, known as the Cahn-Hilliard
-# equation. In particular it demonstrates the use of
+# This example demonstrates the solution of the Cahn-Hillard equation,
+# a nonlinear time-dependent fourth-order PDE.
 #
 # * The built-in Newton solver
 # * Advanced use of the base class ``NonlinearProblem``
@@ -107,9 +106,6 @@
 #
 # This demo is implemented in the :download:`demo_cahn-hilliard.py`
 # file.
-#
-# First, the modules :py:mod:`random` :py:mod:`matplotlib`
-# :py:mod:`dolfin` module are imported::
 
 import os
 
@@ -124,7 +120,6 @@ from dolfin.io import XDMFFile
 from ufl import (FiniteElement, derivative, diff, dx, grad, inner, split,
                  variable)
 
-# Save all logging to file
 log.set_output_file("log.txt")
 
 # .. index::
@@ -133,8 +128,6 @@ log.set_output_file("log.txt")
 # A class which will represent the Cahn-Hilliard in an abstract from for
 # use in the Newton solver is now defined. It is a subclass of
 # :py:class:`NonlinearProblem <dolfin.cpp.NonlinearProblem>`. ::
-
-# Class for interfacing with the Newton solver
 
 
 class CahnHilliardEquation(NonlinearProblem):
@@ -149,6 +142,7 @@ class CahnHilliardEquation(NonlinearProblem):
         x.ghostUpdate(addv=PETSc.InsertMode.INSERT, mode=PETSc.ScatterMode.FORWARD)
 
     def F(self, x):
+        """Compute the residual vector b"""
         if self._F is None:
             self._F = assemble_vector(self.L)
         else:
@@ -159,6 +153,7 @@ class CahnHilliardEquation(NonlinearProblem):
         return self._F
 
     def J(self, x):
+        """Compute the Jacobian matrix A"""
         if self._J is None:
             self._J = assemble_matrix(self.a)
         else:
@@ -179,9 +174,9 @@ class CahnHilliardEquation(NonlinearProblem):
 
 
 # Model parameters
-lmbda = 1.0e-02  # surface parameter
-dt = 5.0e-06  # time step
-theta = 0.5      # time stepping family, e.g. theta=1 -> backward Euler, theta=0.5 -> Crank-Nicolson
+lmbda = 1e-02  # surface parameter
+dt = 5e-06     # time step
+theta = 0.5    # time stepping family, e.g. theta=1 -> backward Euler, theta=0.5 -> Crank-Nicolson
 
 # A unit square mesh with 97 (= 96 + 1) vertices in each direction is
 # created, and on this mesh a
@@ -232,19 +227,14 @@ c0, mu0 = split(u0)
 
 
 def u_init(values, x):
+    """Initialise values for c and mu"""
     values[:, 0] = 0.63 + 0.02 * (0.5 - np.random.rand(x.shape[0]))
     values[:, 1] = 0.0
 
 
-# Create intial conditions and interpolate
+# Create intial conditions and interpolate into u (two components, c and mu)
 u.interpolate(u_init)
 
-# The first line creates an object of type ``InitialConditions``.  The
-# following two lines make ``u`` and ``u0`` interpolants of ``u_init``
-# (since ``u`` and ``u0`` are finite element functions, they may not be
-# able to represent a given function exactly, but the function can be
-# approximated by interpolating it in a finite element space).
-#
 # .. index:: automatic differentiation
 #
 # The chemical potential :math:`df/dc` is computed using automated
