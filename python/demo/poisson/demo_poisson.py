@@ -82,7 +82,7 @@ import dolfin
 import dolfin.plotting
 import ufl
 from dolfin import (MPI, CellType, DirichletBC, Function, FunctionSpace,
-                    RectangleMesh, TestFunction, TrialFunction, solve)
+                    UnitSquareMesh, TestFunction, TrialFunction, solve)
 from dolfin.function.specialfunctions import SpatialCoordinate
 from dolfin.io import XDMFFile
 from ufl import ds, dx, grad, inner
@@ -95,14 +95,8 @@ from ufl import ds, dx, grad, inner
 # divided into two triangles, we do as follows ::
 
 # Create mesh and define function space
-mesh = RectangleMesh(
-    MPI.comm_world,
-    [np.array([0, 0, 0]), np.array([1, 1, 0])], [32, 32],
-    CellType.Type.triangle, dolfin.cpp.mesh.GhostMode.none)
+mesh = UnitSquareMesh(MPI.comm_world, 32, 32)
 V = FunctionSpace(mesh, ("Lagrange", 1))
-
-cmap = dolfin.fem.create_coordinate_map(mesh.ufl_domain())
-mesh.geometry.coord_mapping = cmap
 
 # The second argument to :py:class:`FunctionSpace
 # <dolfin.functions.functionspace.FunctionSpace>` is the finite element
