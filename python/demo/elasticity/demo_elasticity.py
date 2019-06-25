@@ -85,7 +85,7 @@ rho = 10.0
 
 # Loading due to centripetal acceleration (rho*omega^2*x_i)
 x = SpatialCoordinate(mesh)
-f = as_vector((rho*omega**2*x[0], rho*omega**2*x[1], 0.0))
+f = as_vector((rho * omega**2 * x[0], rho * omega**2 * x[1], 0.0))
 
 # Elasticity parameters
 E = 1.0e9
