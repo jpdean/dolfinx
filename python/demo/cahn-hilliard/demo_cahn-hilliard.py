@@ -295,7 +295,7 @@ solver.rtol = 1e-6
 # ``"residual"``, or to provide a user-defined check). The tolerance for
 # convergence is specified by ``rtol``.
 #
-# To run the solver and save the output to a VTK file for later
+# To run the solver and save the output to an XDMF file for later
 # visualization, the solver is advanced in time from :math:`t_{n}` to
 # :math:`t_{n+1}` until a terminal time :math:`T` is reached::
 
@@ -320,14 +320,3 @@ while (t < T):
     print("Step, num iterations:", int(t / dt), r[0])
     u.vector().copy(result=u0.vector())
     file.write(u.sub(0), t)
-
-# The string ``"compressed"`` indicates that the output data should be
-# compressed to reduce the file size. Within the time stepping loop, the
-# solution vector associated with ``u`` is copied to ``u0`` at the
-# beginning of each time step, and the nonlinear problem is solved by
-# calling
-# :py:func:`solver.solve(problem,u.vector())<dolfin.cpp.NewtonSolver.solve>`,
-# with the new solution vector returned in
-# :py:func:`u.vector()<dolfin.cpp.Function.vector>`. The ``c`` component
-# of the solution (the first component of ``u``) is then written to file
-# at every time step.

@@ -6,7 +6,7 @@
 
 # This demo solves the equations of static linear elasticity for a
 # pulley subjected to centripetal accelerations. The solver uses
-# smoothed aggregation algerbaric multigrid.
+# smoothed aggregation algebraic multigrid.
 
 from contextlib import ExitStack
 
@@ -57,16 +57,8 @@ def build_nullspace(V):
 
 
 # Load mesh from file
-# mesh = Mesh(MPI.comm_world)
-# XDMFFile(MPI.comm_world, "../pulley.xdmf").read(mesh)
-
-# mesh = UnitCubeMesh(2, 2, 2)
-mesh = BoxMesh(
-    MPI.comm_world, [np.array([0.0, 0.0, 0.0]),
-                     np.array([2.0, 1.0, 1.0])], [12, 12, 12],
-    CellType.Type.tetrahedron, dolfin.cpp.mesh.GhostMode.none)
-cmap = dolfin.fem.create_coordinate_map(mesh.ufl_domain())
-mesh.geometry.coord_mapping = cmap
+xdmf = XDMFFile(MPI.comm_world, "pulley.xdmf")
+mesh = xdmf.read_mesh(MPI.comm_world, dolfin.cpp.mesh.GhostMode.none)
 
 # Function to mark inner surface of pulley
 # def inner_surface(x, on_boundary):
@@ -75,12 +67,15 @@ mesh.geometry.coord_mapping = cmap
 
 
 def boundary(x, on_boundary):
-    return np.logical_or(x[:, 0] < 10.0 * np.finfo(float).eps,
-                         x[:, 0] > 1.0 - 10.0 * np.finfo(float).eps)
+    r2 = (3.75 - x[:, 2]*0.17)**2
+    R = x[:, 0]**2 + x[:, 1]**2
+    return (R[:] < r2[:])
+#    return np.logical_or(x[:, 0] < 10.0 * np.finfo(float).eps,
+#                         x[:, 0] > 1.0 - 10.0 * np.finfo(float).eps)
 
 
 # Rotation rate and mass density
-omega = 3000.0
+omega = 300.0
 rho = 10.0
 
 # Loading due to centripetal acceleration (rho*omega^2*x_i)
@@ -170,18 +165,8 @@ unorm = u.vector().norm()
 if MPI.rank(mesh.mpi_comm()) == 0:
     print("Solution vector norm:", unorm)
 
-# Save colored mesh partitions in VTK format if running in parallel
-# if MPI.size(mesh.mpi_comm()) > 1:
-#    File("partitions.pvd") << MeshFunction("size_t", mesh, mesh.topology.dim, \
-#                                           MPI.rank(mesh.mpi_comm()))
-
 # Project and write stress field to post-processing file
 W = TensorFunctionSpace(mesh, ("Discontinuous Lagrange", 0))
 stress = project(sigma(u), V=W)
-# File("stress.pvd") << stress
-
-# Plot solution
-# import matplotlib.pyplot as plt
-# import dolfin.plotting
-# dolfin.plotting.plot(u)
-# plt.show()
+file = XDMFFile(MPI.comm_world, "stress.xdmf")
+file.write(stress)
