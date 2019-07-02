@@ -165,9 +165,11 @@ bc = DirichletBC(V, u0, boundary)
 u = TrialFunction(V)
 v = TestFunction(V)
 x = SpatialCoordinate(mesh)
-f = 10 * ufl.exp(-((x[0] - 0.5)**2 + (x[1] - 0.5)**2) / 0.02)
+
+kappa = dolfin.function.Constant(10.0, mesh)
+f = ufl.exp(-((x[0] - 0.5)**2 + (x[1] - 0.5)**2) / 0.02)
 g = ufl.sin(5 * x[0])
-a = inner(grad(u), grad(v)) * dx
+a = kappa * inner(grad(u), grad(v)) * dx
 L = inner(f, v) * dx + inner(g, v) * ds
 
 # Now, we have specified the variational forms and can consider the

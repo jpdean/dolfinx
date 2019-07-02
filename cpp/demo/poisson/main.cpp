@@ -133,6 +133,17 @@ int main(int argc, char* argv[])
   std::free(ufc_map);
   std::free(space);
 
+  // Create function space for Constant
+  ufc_function_space* space_kappa = poisson_coefficientspace_kappa_create();
+  ufc_dofmap* ufc_map_kappa = space_kappa->create_dofmap();
+  ufc_finite_element* ufc_element_kappa = space_kappa->create_element();
+  auto R = std::make_shared<function::FunctionSpace>(
+      mesh, std::make_shared<fem::FiniteElement>(*ufc_element_kappa),
+      std::make_shared<fem::DofMap>(*ufc_map_kappa, *mesh));
+  std::free(ufc_element_kappa);
+  std::free(ufc_map_kappa);
+  std::free(space_kappa);
+
   // Now, the Dirichlet boundary condition (:math:`u = 0`) can be created
   // using the class :cpp:class:`DirichletBC`. A :cpp:class:`DirichletBC`
   // takes three arguments: the function space the boundary condition
@@ -179,6 +190,7 @@ int main(int argc, char* argv[])
 
   auto f = std::make_shared<function::Function>(V);
   auto g = std::make_shared<function::Function>(V);
+  auto kappa = std::make_shared<function::Function>(R);
 
   // Attach 'coordinate mapping' to mesh
   auto cmap = a->coordinate_mapping();
@@ -192,7 +204,15 @@ int main(int argc, char* argv[])
   });
   g->interpolate(
       [](auto values, auto x) { values = Eigen::sin(5 * x.col(0)); });
+  kappa->interpolate([](auto values, auto x) {
+    for (int i = 0; i < x.rows(); ++i)
+    {
+      values(i, 0) = 10.0;
+    }
+  });
   L->set_coefficients({{"f", f}, {"g", g}});
+  a->set_coefficients({{"kappa", kappa}});
+
 
   // Now, we have specified the variational forms and can consider the
   // solution of the variational problem. First, we need to define a

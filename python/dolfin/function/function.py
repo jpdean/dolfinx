@@ -61,26 +61,6 @@ class Function(ufl.Coefficient):
     def value_shape(self):
         return self._cpp_object.value_shape
 
-    def ufl_evaluate(self, x, component, derivatives):
-        """Function used by ufl to evaluate the Expression"""
-        # FIXME: same as dolfin.expression.Expression version. Find
-        # way to re-use.
-        assert derivatives == ()  # TODO: Handle derivatives
-
-        if component:
-            shape = self.ufl_shape
-            assert len(shape) == len(component)
-            value_size = ufl.product(shape)
-            index = ufl.utils.indexflattening.flatten_multiindex(
-                component, ufl.utils.indexflattening.shape_to_strides(shape))
-            values = np.zeros(value_size)
-            # FIXME: use a function with a return value
-            self(*x, values=values)
-            return values[index]
-        else:
-            # Scalar evaluation
-            return self(*x)
-
     def __call__(self, x: np.ndarray, bb_tree: cpp.geometry.BoundingBoxTree) -> np.ndarray:
         """Evaluate Function at points x, where x has shape (num_points, gdim)"""
         _x = np.asarray(x, dtype=np.float)
@@ -183,3 +163,41 @@ class Function(ufl.Coefficient):
         V_collapsed = functionspace.FunctionSpace(None, self.ufl_element(),
                                                   u_collapsed.function_space())
         return Function(V_collapsed, u_collapsed.vector())
+
+
+class Constant(ufl.Coefficient):
+    def __init__(self, value: typing.Union[float, list], mesh: cpp.mesh.Mesh, name: str = None):
+        self._value = np.asarray(value)
+
+        # Prepare a FE Function on Real element
+        if self._value.ndim == 0:
+            el = ufl.FiniteElement("R", mesh.ufl_cell(), 0)
+        elif self._value.ndim == 1:
+            el = ufl.VectorElement("R", mesh.ufl_cell(), 0, dim=self._value.shape[0])
+        elif self._value.ndim >= 2:
+            el = ufl.TensorElement("R", mesh.ufl_cell(), 0, shape=self._value.shape)
+
+        V = function.FunctionSpace(mesh, el)
+        self._cpp_object = cpp.function.Function(V._cpp_object)
+
+        # Initialize the ufl.FunctionSpace
+        super().__init__(V.ufl_function_space(), count=self._cpp_object.id)
+
+        # Store DOLFIN FunctionSpace object
+        self._V = V
+
+        # Set public interface value to be the numpy array
+        self.value = self._value
+
+    @property
+    def value(self):
+        return self._value
+
+    @value.setter
+    def value(self, value):
+        self._value = np.asarray(value)
+
+        def constant_eval(values, x):
+            values[:, :] = self._value.flatten()
+
+        self._cpp_object.interpolate(constant_eval)
