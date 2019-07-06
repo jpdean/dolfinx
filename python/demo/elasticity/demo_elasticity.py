@@ -71,6 +71,7 @@ def boundary(x, only_boundary):
     R = x[:, 0]**2 + x[:, 1]**2
     return (R[:] < r2[:])
 
+
 # Rotation rate and mass density
 omega = 300.0
 rho = 10.0
