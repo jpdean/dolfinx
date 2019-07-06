@@ -66,13 +66,10 @@ mesh = xdmf.read_mesh(MPI.comm_world, dolfin.cpp.mesh.GhostMode.none)
 #    return (x[0]*x[0] + x[1]*x[1]) < r*r and on_boundary
 
 
-def boundary(x, on_boundary):
+def boundary(x, only_boundary):
     r2 = (3.75 - x[:, 2] * 0.17)**2
     R = x[:, 0]**2 + x[:, 1]**2
     return (R[:] < r2[:])
-#    return np.logical_or(x[:, 0] < 10.0 * np.finfo(float).eps,
-#                         x[:, 0] > 1.0 - 10.0 * np.finfo(float).eps)
-
 
 # Rotation rate and mass density
 omega = 300.0
