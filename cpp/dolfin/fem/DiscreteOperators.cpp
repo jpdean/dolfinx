@@ -88,10 +88,14 @@ DiscreteOperators::build_gradient(const function::FunctionSpace& V0,
   // Build sparsity pattern
   std::vector<PetscInt> rows;
   std::vector<PetscInt> cols;
-  for (auto& edge : mesh::MeshRange<mesh::Edge>(mesh))
+  const std::size_t num_regular_edges = mesh.topology().ghost_offset(1);
+
+  for (std::size_t i = 0; i < num_regular_edges; ++i)
   {
+    const mesh::Edge edge(mesh, i);
+
     // Row index (global indices)
-    const std::int64_t row = local_to_global_map0[edge_to_dof[edge.index()]];
+    const std::int64_t row = local_to_global_map0[edge_to_dof[i]];
     rows.push_back(row);
 
     if (row >= local_range[0][0] and row < local_range[0][1])
@@ -114,14 +118,15 @@ DiscreteOperators::build_gradient(const function::FunctionSpace& V0,
   // Create matrix
   la::PETScMatrix A(mesh.mpi_comm(), pattern);
 
-  // Build discrete gradient operator/matrix
-  for (auto& edge : mesh::MeshRange<mesh::Edge>(mesh))
+  for (std::size_t i = 0; i < num_regular_edges; ++i)
   {
+    const mesh::Edge edge(mesh, i);
+
     PetscInt row;
     PetscInt cols[2];
     PetscScalar values[2];
 
-    row = local_to_global_map0[edge_to_dof[edge.index()]];
+    row = local_to_global_map0[edge_to_dof[i]];
 
     mesh::Vertex v0(mesh, edge.entities(0)[0]);
     mesh::Vertex v1(mesh, edge.entities(0)[1]);

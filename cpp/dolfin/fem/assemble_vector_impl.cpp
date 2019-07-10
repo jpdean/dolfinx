@@ -87,8 +87,12 @@ void _lift_bc_cells(
 
   // Iterate over all cells
   const int orient = 0;
-  for (const mesh::Cell& cell : mesh::MeshRange<mesh::Cell>(mesh))
+  const int num_regular_cells = mesh.topology().ghost_offset(mesh.topology().dim());
+
+  for (int i = 0; i < num_regular_cells; ++i)
   {
+    const mesh::Cell cell(mesh, i);
+
     // Check that cell is not a ghost
     assert(!cell.is_ghost());
 
@@ -217,16 +221,20 @@ void _lift_bc_exterior_facets(
       Ae;
   Eigen::Matrix<PetscScalar, Eigen::Dynamic, 1> be;
 
-  // Iterate over all cells
-  for (const mesh::Facet& facet : mesh::MeshRange<mesh::Facet>(mesh))
+  // Iterate over all facets
+  const int num_facets = mesh.num_entities(tdim - 1);
+
+  for (int i = 0; i < num_facets; ++i)
   {
+    const mesh::Facet facet(mesh, i);
+
     if (facet.num_global_entities(tdim) != 1)
       continue;
 
     // FIXME: sort out ghosts
 
     // Create attached cell
-    mesh::Cell cell(mesh, facet.entities(tdim)[0]);
+    const mesh::Cell cell(mesh, facet.entities(tdim)[0]);
 
     // Get local index of facet with respect to the cell
     const int local_facet = cell.index(facet);

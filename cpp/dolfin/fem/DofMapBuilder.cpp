@@ -337,8 +337,11 @@ DofMapStructure build_basic_dofmap(const mesh::Mesh& mesh,
       = element_dof_layout.entity_dofs_all();
 
   // Build dofmaps from ElementDofmap
-  for (auto& cell : mesh::MeshRange<mesh::Cell>(mesh, mesh::MeshRangeType::ALL))
+  const std::size_t num_all_cells = mesh.num_entities(D);
+  for (std::size_t i = 0; i < num_all_cells; ++i)
   {
+    const mesh::Cell cell(mesh, i);
+
     // Get local (process) and global cell entity indices
     get_cell_entities(entity_indices_local, entity_indices_global, cell,
                       needs_entities);
@@ -404,19 +407,23 @@ compute_sharing_markers(const DofMapStructure& dofmap,
 
   // Mark dofs associated ghost cells as ghost dofs, provisionally
   bool has_ghost_cells = false;
-  for (auto& c : mesh::MeshRange<mesh::Cell>(mesh, mesh::MeshRangeType::ALL))
+
+  const std::size_t num_all_cells = mesh.num_entities(D);
+  for (std::size_t i = 0; i < num_all_cells; ++i)
   {
+    const mesh::Cell c(mesh, i);
+
     const PetscInt* cell_nodes = dofmap.dofs(c.index());
     if (c.is_shared())
     {
       const sharing_marker status = (c.is_ghost())
                                         ? sharing_marker::ghost
                                         : sharing_marker::interior_ghost_layer;
-      for (std::int32_t i = 0; i < dofmap.num_dofs(c.index()); ++i)
+      for (std::int32_t j = 0; j < dofmap.num_dofs(c.index()); ++j)
       {
         // Ensure not already set (for R space)
-        if (shared_nodes[cell_nodes[i]] == sharing_marker::interior)
-          shared_nodes[cell_nodes[i]] = status;
+        if (shared_nodes[cell_nodes[j]] == sharing_marker::interior)
+          shared_nodes[cell_nodes[j]] = status;
       }
     }
 
@@ -424,8 +431,14 @@ compute_sharing_markers(const DofMapStructure& dofmap,
     if (c.is_ghost())
     {
       has_ghost_cells = true;
-      for (auto& f : mesh::EntityRange<mesh::Facet>(c))
+
+      const std::int32_t* facet_indices = c.entities(D - 1);
+      const std::size_t facets_per_cell = c.num_entities(D - 1);
+      for (std::size_t j = 0; j < facets_per_cell; ++j)
       {
+        // Fetch vertex index
+        const mesh::Facet f(mesh, facet_indices[j]);
+
         if (!f.is_ghost())
         {
           const std::set<int>& facet_nodes = facet_table[c.index(f)];
@@ -442,9 +455,10 @@ compute_sharing_markers(const DofMapStructure& dofmap,
   if (has_ghost_cells)
     return shared_nodes;
 
-  // Mark nodes on inter-process boundary
-  for (auto& f : mesh::MeshRange<mesh::Facet>(mesh, mesh::MeshRangeType::ALL))
+  const std::size_t num_all_facets = mesh.num_entities(D - 1);
+  for (std::size_t i = 0; i < num_all_facets; ++i)
   {
+    const mesh::Facet f(mesh, i);
     // Skip if facet is not shared
     // NOTE: second test is for periodic problems
     if (!f.is_shared() and f.num_entities(D) == 2)

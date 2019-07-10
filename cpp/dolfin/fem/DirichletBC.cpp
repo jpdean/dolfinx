@@ -16,7 +16,6 @@
 #include <dolfin/mesh/Facet.h>
 #include <dolfin/mesh/Mesh.h>
 #include <dolfin/mesh/MeshFunction.h>
-#include <dolfin/mesh/MeshIterator.h>
 #include <dolfin/mesh/Vertex.h>
 #include <map>
 #include <utility>
@@ -139,8 +138,12 @@ std::vector<std::int32_t> marked_facets(
   // If a vertex is on the boundary, give it an index from [0, count)
   std::vector<std::int32_t> boundary_vertex(mesh.num_entities(0), -1);
   std::size_t count = 0;
-  for (const auto& facet : mesh::MeshRange<mesh::Facet>(mesh))
+  const std::size_t num_regular_facets = mesh.topology().ghost_offset(tdim - 1);
+
+  for (std::size_t i = 0; i < num_regular_facets; ++i)
   {
+    const mesh::Facet facet(mesh, i);
+
     if (facet.num_global_entities(tdim) == 1)
     {
       const std::int32_t* v = facet.entities(0);
@@ -176,15 +179,19 @@ std::vector<std::int32_t> marked_facets(
   EigenArrayXb boundary_marked = mark(x_boundary, true);
   assert(boundary_marked.rows() == x_boundary.rows());
 
-  for (auto& facet : mesh::MeshRange<mesh::Facet>(mesh))
+  for (std::size_t i = 0; i < num_regular_facets; ++i)
   {
+    const mesh::Facet facet(mesh, i);
 
     // By default, all vertices on this facet are marked
     bool all_vertices_marked = true;
 
-    for (const auto& v : mesh::EntityRange<mesh::Vertex>(facet))
+    const std::int32_t* v = facet.entities(0);
+    const std::size_t vertices_per_facet = facet.num_entities(0);
+    for (std::size_t i = 0; i < vertices_per_facet; ++i)
     {
-      const std::int32_t idx = v.index();
+      // Fetch vertex index
+      const std::int32_t idx = v[i];
 
       // The vertex is not marked (marked as false) in two cases:
       // 1. It is a boundary vertex and both evaluations of mark function

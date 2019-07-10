@@ -13,7 +13,6 @@
 #include <dolfin/common/MPI.h>
 #include <dolfin/common/types.h>
 #include <dolfin/mesh/Cell.h>
-#include <dolfin/mesh/MeshIterator.h>
 #include <dolfin/mesh/Vertex.h>
 
 using namespace dolfin;
@@ -281,24 +280,32 @@ Eigen::Array<PetscInt, Eigen::Dynamic, 1> DofMap::dofs(const mesh::Mesh& mesh,
     entity_dofs_local.push_back(element_dof_layout->entity_dofs(dim, i));
 
   // Iterate over cells
-  for (auto& c : mesh::MeshRange<mesh::Cell>(mesh))
+  const std::size_t num_regular_cells = mesh.topology().ghost_offset(mesh.topology().dim());
+
+  for (std::size_t i = 0; i < num_regular_cells; ++i)
   {
+    const mesh::Cell cell(mesh, i);
+
     // Get local-to-global dofmap for cell
     Eigen::Map<const Eigen::Array<PetscInt, Eigen::Dynamic, 1>> cell_dof_list
-        = cell_dofs(c.index());
+        = cell_dofs(i);
+
+    const std::int32_t* entity_indices = cell.entities(dim);
+    const std::size_t entities_per_cell = cell.num_entities(dim);
 
     // Loop over all entities of dimension dim
-    unsigned int local_index = 0;
-    for (auto& e : mesh::EntityRange<mesh::MeshEntity>(c, dim))
+    for (std::size_t local_index = 0; local_index < entities_per_cell; ++local_index)
     {
+      const std::size_t entity_index = entity_indices[local_index];
+
       // Get dof index and add to list
-      for (Eigen::Index i = 0; i < entity_dofs_local[local_index].size(); ++i)
+      for (Eigen::Index j = 0; j < entity_dofs_local[local_index].size(); ++j)
       {
-        const std::size_t entity_dof_local = entity_dofs_local[local_index][i];
+        const std::size_t entity_dof_local = entity_dofs_local[local_index][j];
         const PetscInt dof_index = cell_dof_list[entity_dof_local];
-        assert((Eigen::Index)(e.index() * num_dofs_per_entity + i)
+        assert((Eigen::Index)(entity_index * num_dofs_per_entity + j)
                < dof_list.size());
-        dof_list[e.index() * num_dofs_per_entity + i] = dof_index;
+        dof_list[entity_index * num_dofs_per_entity + j] = dof_index;
       }
       ++local_index;
     }
