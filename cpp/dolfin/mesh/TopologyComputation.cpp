@@ -373,7 +373,7 @@ void TopologyComputation::compute_entities(Mesh& mesh, int dim)
     topology.set_connectivity(std::get<1>(data), dim, 0);
 
   // Initialise ghost entity offset
-  topology.init_ghost(dim, std::get<2>(data));
+  topology.set_ghost_offset(dim, std::get<2>(data));
 }
 //-----------------------------------------------------------------------------
 void TopologyComputation::compute_connectivity(Mesh& mesh, int d0, int d1)

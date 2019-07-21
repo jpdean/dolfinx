@@ -36,7 +36,7 @@ public:
   /// Create empty mesh topology
   /// @param dim
   ///   Topological dimension
-  Topology(std::size_t dim, std::int32_t num_vertices,
+  Topology(int dim, std::int32_t num_vertices,
            std::int64_t num_vertices_global);
 
   /// Copy constructor
@@ -75,16 +75,16 @@ public:
   void set_global_indices(int dim,
                           const std::vector<std::int64_t>& global_indices);
 
-  /// Initialise the offset index of ghost entities for this dimension
-  void init_ghost(std::size_t dim, std::size_t index);
+  /// Set the offset index of ghost entities of dimension dim
+  void set_ghost_offset(int dim, std::int32_t index);
 
   /// Get local-to-global index map for entities of topological
   /// dimension d
-  const std::vector<std::int64_t>& global_indices(std::size_t d) const;
+  const std::vector<std::int64_t>& global_indices(int d) const;
 
   /// Check if global indices are available for entities of
   /// dimension dim
-  bool have_global_indices(std::size_t dim) const;
+  bool have_global_indices(int dim) const;
 
   /// Return map from shared entities (local index) to processes
   /// that share the entity
@@ -106,15 +106,13 @@ public:
   const std::vector<std::int32_t>& cell_owner() const;
 
   /// Return connectivity for given pair of topological dimensions
-  std::shared_ptr<Connectivity> connectivity(std::size_t d0, std::size_t d1);
+  std::shared_ptr<Connectivity> connectivity(int d0, int d1);
 
   /// Return connectivity for given pair of topological dimensions
-  std::shared_ptr<const Connectivity> connectivity(std::size_t d0,
-                                                   std::size_t d1) const;
+  std::shared_ptr<const Connectivity> connectivity(int d0, int d1) const;
 
   /// Set connectivity for given pair of topological dimensions
-  void set_connectivity(std::shared_ptr<Connectivity> c, std::size_t d0,
-                        std::size_t d1);
+  void set_connectivity(std::shared_ptr<Connectivity> c, int d0, int d1);
 
   /// Return hash based on the hash of cell-vertex connectivity
   size_t hash() const;
@@ -126,9 +124,9 @@ private:
   // Number of mesh vertices
   const std::int32_t _num_vertices;
 
-  // Starting index for ghost entities of ach dimension. Ghost entities
+  // Starting index for ghost entities of each dimension. Ghost entities
   // appear at the end of of the connectivity list.
-  std::vector<std::int32_t> _ghost_offset_index;
+  std::vector<std::int32_t> _ghost_offset;
 
   // Global number of mesh entities for each topological dimension
   std::vector<std::int64_t> _global_num_entities;

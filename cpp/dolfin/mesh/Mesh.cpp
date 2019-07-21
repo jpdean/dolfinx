@@ -226,7 +226,7 @@ Mesh::Mesh(MPI_Comm comm, mesh::CellType type,
 
   // Initialise cell topology
   _topology->set_num_entities_global(tdim, num_cells_global);
-  _topology->init_ghost(tdim, num_cells_local);
+  _topology->set_ghost_offset(tdim, num_cells_local);
 
   // Find the max vertex index of non-ghost cells.
   if (num_ghost_cells > 0)
@@ -237,10 +237,10 @@ Mesh::Mesh(MPI_Comm comm, mesh::CellType type,
 
     // Initialise number of local non-ghost vertices
     const std::uint32_t num_non_ghost_vertices = max_vertex + 1;
-    _topology->init_ghost(0, num_non_ghost_vertices);
+    _topology->set_ghost_offset(0, num_non_ghost_vertices);
   }
   else
-    _topology->init_ghost(0, num_vertices_local);
+    _topology->set_ghost_offset(0, num_vertices_local);
 
   // Add cells. Only copies the first few entries on each row
   // corresponding to vertices.
