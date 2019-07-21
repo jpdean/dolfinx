@@ -30,6 +30,7 @@ int Topology::dim() const { return _connectivity.size() - 1; }
 //-----------------------------------------------------------------------------
 std::int32_t Topology::size(int dim) const
 {
+  assert(dim < (int)_ghost_offset.size());
   if (dim == 0)
     return _num_vertices;
 
@@ -42,7 +43,25 @@ std::int32_t Topology::size(int dim) const
                              + " have not been created.");
   }
 
-  return c->entity_positions().rows() - 1;
+  return _ghost_offset[dim];
+}
+//-----------------------------------------------------------------------------
+std::int32_t Topology::size_ghosts(int dim) const
+{
+  assert(dim < (int)_ghost_offset.size());
+  if (dim == 0)
+    return _num_vertices - _ghost_offset[0];
+
+  assert(dim < (int)_connectivity.size());
+  assert(!_connectivity[dim].empty());
+  auto c = _connectivity[dim][0];
+  if (!c)
+  {
+    throw std::runtime_error("Entities of dimension " + std::to_string(dim)
+                             + " have not been created.");
+  }
+
+  return (c->entity_positions().rows() - 1) - _ghost_offset[dim];
 }
 //-----------------------------------------------------------------------------
 std::int64_t Topology::size_global(int dim) const
