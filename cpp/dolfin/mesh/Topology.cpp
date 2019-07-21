@@ -117,7 +117,7 @@ void Topology::set_global_indices(
 //-----------------------------------------------------------------------------
 void Topology::set_ghost_offset(int dim, std::int32_t index)
 {
-  assert(dim < (int)_ghost_offset.size());
+  assert(dim < _ghost_offset.size());
   _ghost_offset[dim] = index;
 }
 //-----------------------------------------------------------------------------
