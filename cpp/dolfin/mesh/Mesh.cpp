@@ -49,12 +49,6 @@ Eigen::ArrayXd cell_r(const mesh::Mesh& mesh)
   Eigen::ArrayXi cells(num_cells);
   std::iota(cells.data(), cells.data() + cells.size(), 0);
   return mesh::inradius(mesh, cells);
-
-  // return cell_r(*this).minCoeff();
-  // double r = std::numeric_limits<double>::max();
-  // for (auto& cell : MeshRange<Cell>(*this))
-  //   r = std::min(r, cell.inradius());
-  // return r;
 }
 //-----------------------------------------------------------------------------
 // Compute map from global node indices to local (contiguous) node

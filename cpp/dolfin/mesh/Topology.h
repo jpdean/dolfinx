@@ -126,9 +126,9 @@ private:
   // Number of mesh vertices
   const std::int32_t _num_vertices;
 
-  // Number of ghost indices for each topological dimension (local
-  // or global??)
-  std::vector<std::size_t> _ghost_offset_index;
+  // Starting index for ghost entities of ach dimension. Ghost entities
+  // appear at the end of of the connectivity list.
+  std::vector<std::int32_t> _ghost_offset_index;
 
   // Global number of mesh entities for each topological dimension
   std::vector<std::int64_t> _global_num_entities;
