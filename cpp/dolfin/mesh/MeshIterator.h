@@ -218,8 +218,8 @@ public:
       it->_local_index = _mesh.topology().ghost_offset(it->_dim);
       return it;
     }
-    else
-      return MeshIterator<T>(_mesh, 0);
+
+    return MeshIterator<T>(_mesh, 0);
   }
 
   /// MeshIterator of type T pointing to start of range (non-const)
@@ -231,8 +231,8 @@ public:
       it->_local_index = _mesh.topology().ghost_offset(it->_dim);
       return it;
     }
-    else
-      return MeshIterator<T>(_mesh, 0);
+
+    return MeshIterator<T>(_mesh, 0);
   }
 
   /// MeshIterator of type T pointing to end of range (const)
@@ -242,10 +242,8 @@ public:
     if (_type == MeshRangeType::REGULAR)
       it->_local_index = _mesh.topology().ghost_offset(it->dim());
     else
-    {
-      it->_local_index = _mesh.topology().size(it->dim())
-                         + _mesh.topology().size_ghosts(it->dim());
-    }
+      it->_local_index = _mesh.topology().size(it->dim());
+
     return it;
   }
 
@@ -274,40 +272,30 @@ public:
   const MeshIterator<MeshEntity> begin() const
   {
     if (_type == MeshRangeType::GHOST)
-    {
       return MeshIterator<MeshEntity>(_mesh, _dim,
                                       _mesh.topology().ghost_offset(_dim));
-    }
-    else
-      return MeshIterator<MeshEntity>(_mesh, _dim, 0);
+
+    return MeshIterator<MeshEntity>(_mesh, _dim, 0);
   }
 
   /// MeshIterator of MeshEntity pointing to start of range (non-const)
   MeshIterator<MeshEntity> begin()
   {
     if (_type == MeshRangeType::GHOST)
-    {
       return MeshIterator<MeshEntity>(_mesh, _dim,
                                       _mesh.topology().ghost_offset(_dim));
-    }
-    else
-      return MeshIterator<MeshEntity>(_mesh, _dim, 0);
+
+    return MeshIterator<MeshEntity>(_mesh, _dim, 0);
   }
 
   /// MeshIterator of MeshEntity pointing to end of range (const)
   const MeshIterator<MeshEntity> end() const
   {
     if (_type == MeshRangeType::REGULAR)
-    {
       return MeshIterator<MeshEntity>(_mesh, _dim,
                                       _mesh.topology().ghost_offset(_dim));
-    }
-    else
-    {
-      return MeshIterator<MeshEntity>(_mesh, _dim,
-                                      _mesh.topology().size(_dim)
-                                          + _mesh.topology().size_ghosts(_dim));
-    }
+
+    return MeshIterator<MeshEntity>(_mesh, _dim, _mesh.topology().size(_dim));
   }
 
 private:
