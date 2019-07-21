@@ -118,8 +118,8 @@ void mesh(py::module& m)
       .def_property_readonly("dim", &dolfin::mesh::Topology::dim,
                              "Topological dimension")
       .def("connectivity",
-           py::overload_cast<int, int>(
-               &dolfin::mesh::Topology::connectivity, py::const_))
+           py::overload_cast<int, int>(&dolfin::mesh::Topology::connectivity,
+                                       py::const_))
       .def("size", &dolfin::mesh::Topology::size)
       .def("hash", &dolfin::mesh::Topology::hash)
       .def("have_global_indices", &dolfin::mesh::Topology::have_global_indices)
