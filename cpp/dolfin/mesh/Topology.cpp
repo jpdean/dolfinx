@@ -30,6 +30,10 @@ int Topology::dim() const { return _connectivity.size() - 1; }
 //-----------------------------------------------------------------------------
 std::int32_t Topology::size(int dim) const
 {
+  assert(dim < (int)_ghost_offset.size());
+  assert(_ghost_offset[dim] >= 0);
+  // return _ghost_offset[dim];
+
   if (dim == 0)
     return _num_vertices;
 

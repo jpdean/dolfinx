@@ -544,7 +544,6 @@ def test_projection():
 
 
 def test_basic_interior_facet_assembly():
-
     ghost_mode = dolfin.cpp.mesh.GhostMode.none
     if (dolfin.MPI.size(dolfin.MPI.comm_world) > 1):
         ghost_mode = dolfin.cpp.mesh.GhostMode.shared_facet
