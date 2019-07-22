@@ -267,7 +267,7 @@ xdmf_utils::get_cell_data_values(const function::Function& u)
 
   // Allocate memory for function values at cell centres
   const int tdim = mesh->topology().dim();
-  const std::int32_t num_local_cells = mesh->topology().ghost_offset(tdim);
+  const std::int32_t num_local_cells = mesh->topology().size_local(tdim);
   const std::int32_t local_size = num_local_cells * value_size;
 
   // Build lists of dofs and create map

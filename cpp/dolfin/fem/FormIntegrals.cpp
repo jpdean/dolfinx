@@ -150,7 +150,7 @@ void FormIntegrals::set_default_domains(const mesh::Mesh& mesh)
   // (excluding ghost cells)
   if (cell_integrals.size() > 0 and cell_integrals[0].id == -1)
   {
-    const int num_regular_cells = mesh.topology().ghost_offset(tdim);
+    const int num_regular_cells = mesh.topology().size_local(tdim);
     cell_integrals[0].active_entities.resize(num_regular_cells);
     std::iota(cell_integrals[0].active_entities.begin(),
               cell_integrals[0].active_entities.end(), 0);
@@ -188,7 +188,7 @@ void FormIntegrals::set_default_domains(const mesh::Mesh& mesh)
       // Get owner (MPI ranks) of ghost cells
       const std::vector<std::int32_t>& cell_owners
           = mesh.topology().cell_owner();
-      const std::int32_t ghost_offset = mesh.topology().ghost_offset(tdim);
+      const std::int32_t ghost_offset = mesh.topology().size_local(tdim);
 
       for (const mesh::Facet& facet :
            mesh::MeshRange<mesh::Facet>(mesh, mesh::MeshRangeType::ALL))

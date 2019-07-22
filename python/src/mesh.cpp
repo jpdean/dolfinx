@@ -123,7 +123,7 @@ void mesh(py::module& m)
       .def("size", &dolfin::mesh::Topology::size)
       .def("hash", &dolfin::mesh::Topology::hash)
       .def("have_global_indices", &dolfin::mesh::Topology::have_global_indices)
-      .def("ghost_offset", &dolfin::mesh::Topology::ghost_offset)
+      .def("size_local", &dolfin::mesh::Topology::size_local)
       .def("cell_owner",
            py::overload_cast<>(&dolfin::mesh::Topology::cell_owner, py::const_))
       .def("global_indices",

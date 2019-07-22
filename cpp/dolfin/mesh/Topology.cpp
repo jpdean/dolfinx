@@ -49,25 +49,11 @@ std::int32_t Topology::size(int dim) const
   return c->entity_positions().rows() - 1;
 }
 //-----------------------------------------------------------------------------
-std::int32_t Topology::size_ghost(int dim) const
+std::int32_t Topology::size_local(int dim) const
 {
   assert(dim < (int)_ghost_offset.size());
   assert(_ghost_offset[dim] >= 0);
-  if (dim == 0)
-    return _num_vertices - _ghost_offset[0];
-  else
-  {
-    assert(dim < (int)_connectivity.size());
-    assert(!_connectivity[dim].empty());
-    auto c = _connectivity[dim][0];
-    if (!c)
-    {
-      throw std::runtime_error("Entities of dimension " + std::to_string(dim)
-                               + " have not been created.");
-    }
-
-    return (c->entity_positions().rows() - 1) - _ghost_offset[dim];
-  }
+  return _ghost_offset[dim];
 }
 //-----------------------------------------------------------------------------
 std::int64_t Topology::size_global(int dim) const
@@ -79,12 +65,6 @@ std::int64_t Topology::size_global(int dim) const
     assert(dim < (int)_global_num_entities.size());
     return _global_num_entities[dim];
   }
-}
-//-----------------------------------------------------------------------------
-std::int32_t Topology::ghost_offset(int dim) const
-{
-  assert(dim < (int)_ghost_offset.size());
-  return _ghost_offset[dim];
 }
 //-----------------------------------------------------------------------------
 void Topology::clear(int d0, int d1)
@@ -116,7 +96,7 @@ void Topology::set_global_indices(
   _global_indices[dim] = global_indices;
 }
 //-----------------------------------------------------------------------------
-void Topology::set_ghost_offset(int dim, std::int32_t index)
+void Topology::set_size_local(int dim, std::int32_t index)
 {
   assert(dim < (int)_ghost_offset.size());
   _ghost_offset[dim] = index;

@@ -405,8 +405,8 @@ compute_sharing_markers(const DofMapStructure& dofmap,
 
   // Mark dofs associated ghost cells as ghost dofs, provisionally
   bool has_ghost_cells = false;
-  const std::int32_t ghost_offset_c = mesh.topology().ghost_offset(D);
-  const std::int32_t ghost_offset_f = mesh.topology().ghost_offset(D - 1);
+  const std::int32_t ghost_offset_c = mesh.topology().size_local(D);
+  const std::int32_t ghost_offset_f = mesh.topology().size_local(D - 1);
   const std::map<std::int32_t, std::set<std::int32_t>>& sharing_map_c
       = mesh.topology().shared_entities(D);
   for (auto& c : mesh::MeshRange<mesh::Cell>(mesh, mesh::MeshRangeType::ALL))

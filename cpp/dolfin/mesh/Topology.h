@@ -54,8 +54,12 @@ public:
   /// Return topological dimension
   int dim() const;
 
-  /// Number of entities for given dimension (local to process)
+  /// Number of entities for given dimension (local to process, owned +
+  /// ghost)
   std::int32_t size(int dim) const;
+
+  /// Number of entities for given dimension owned by local to process
+  std::int32_t size_local(int dim) const;
 
   /// Number of ghost entries (local to process)
   std::int32_t size_ghost(int dim) const;
@@ -63,9 +67,9 @@ public:
   /// Number of entities for given dimension across all processes
   std::int64_t size_global(int dim) const;
 
-  /// Return number of regular (non-ghost) entities or equivalently,
-  /// the offset of where ghost entities begin
-  std::int32_t ghost_offset(int dim) const;
+  // /// Return number of regular (non-ghost) entities or equivalently,
+  // /// the offset of where ghost entities begin
+  // std::int32_t size_local(int dim) const;
 
   /// Clear data for given pair of topological dimensions
   void clear(int d0, int d1);
@@ -79,7 +83,7 @@ public:
                           const std::vector<std::int64_t>& global_indices);
 
   /// Set the offset index of ghost entities of dimension dim
-  void set_ghost_offset(int dim, std::int32_t index);
+  void set_size_local(int dim, std::int32_t index);
 
   /// Get local-to-global index map for entities of topological
   /// dimension d

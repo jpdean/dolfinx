@@ -215,7 +215,7 @@ public:
     if (_type == MeshRangeType::GHOST)
     {
       auto it = MeshIterator<T>(_mesh, 0);
-      it->_local_index = _mesh.topology().ghost_offset(it->_dim);
+      it->_local_index = _mesh.topology().size_local(it->_dim);
       return it;
     }
     else
@@ -228,7 +228,7 @@ public:
     if (_type == MeshRangeType::GHOST)
     {
       auto it = MeshIterator<T>(_mesh, 0);
-      it->_local_index = _mesh.topology().ghost_offset(it->_dim);
+      it->_local_index = _mesh.topology().size_local(it->_dim);
       return it;
     }
     else
@@ -240,7 +240,7 @@ public:
   {
     auto it = MeshIterator<T>(_mesh, 0);
     if (_type == MeshRangeType::REGULAR)
-      it->_local_index = _mesh.topology().ghost_offset(it->dim());
+      it->_local_index = _mesh.topology().size_local(it->dim());
     else
       it->_local_index = _mesh.topology().size(it->dim());
 
@@ -274,7 +274,7 @@ public:
     if (_type == MeshRangeType::GHOST)
     {
       return MeshIterator<MeshEntity>(_mesh, _dim,
-                                      _mesh.topology().ghost_offset(_dim));
+                                      _mesh.topology().size_local(_dim));
     }
     else
       return MeshIterator<MeshEntity>(_mesh, _dim, 0);
@@ -286,7 +286,7 @@ public:
     if (_type == MeshRangeType::GHOST)
     {
       return MeshIterator<MeshEntity>(_mesh, _dim,
-                                      _mesh.topology().ghost_offset(_dim));
+                                      _mesh.topology().size_local(_dim));
     }
     else
       return MeshIterator<MeshEntity>(_mesh, _dim, 0);
@@ -298,7 +298,7 @@ public:
     if (_type == MeshRangeType::REGULAR)
     {
       return MeshIterator<MeshEntity>(_mesh, _dim,
-                                      _mesh.topology().ghost_offset(_dim));
+                                      _mesh.topology().size_local(_dim));
     }
     else
       return MeshIterator<MeshEntity>(_mesh, _dim, _mesh.topology().size(_dim));

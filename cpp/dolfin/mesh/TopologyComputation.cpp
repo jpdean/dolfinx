@@ -94,7 +94,7 @@ compute_entities_by_key_matching(const Mesh& mesh, int dim)
 
   // Loop over cells to build list of keyed (by vertices) entities
   int entity_counter = 0;
-  const std::int32_t ghost_offset_c = mesh.topology().ghost_offset(tdim);
+  const std::int32_t ghost_offset_c = mesh.topology().size_local(tdim);
   for (auto& c : MeshRange<Cell>(mesh, MeshRangeType::ALL))
   {
     // Get vertices from cell
@@ -373,7 +373,7 @@ void TopologyComputation::compute_entities(Mesh& mesh, int dim)
     topology.set_connectivity(std::get<1>(data), dim, 0);
 
   // Initialise ghost entity offset
-  topology.set_ghost_offset(dim, std::get<2>(data));
+  topology.set_size_local(dim, std::get<2>(data));
 }
 //-----------------------------------------------------------------------------
 void TopologyComputation::compute_connectivity(Mesh& mesh, int d0, int d1)

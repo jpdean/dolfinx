@@ -69,7 +69,7 @@ std::string ascii_cell_data(const mesh::Mesh& mesh,
   ss << std::scientific;
   ss << std::setprecision(16);
   std::vector<std::size_t>::const_iterator cell_offset = offset.begin();
-  for (int i = 0; i < mesh.topology().ghost_offset(mesh.topology().dim()); ++i)
+  for (int i = 0; i < mesh.topology().size_local(mesh.topology().dim()); ++i)
   {
     if (rank == 1 && data_dim == 2)
     {
@@ -107,7 +107,7 @@ std::string ascii_cell_data(const mesh::Mesh& mesh,
 void write_ascii_mesh(const mesh::Mesh& mesh, std::size_t cell_dim,
                       std::string filename)
 {
-  const std::size_t num_cells = mesh.topology().ghost_offset(cell_dim);
+  const std::size_t num_cells = mesh.topology().size_local(cell_dim);
   const std::size_t num_cell_vertices = mesh::num_cell_vertices(
       mesh::cell_entity_type(mesh.cell_type, cell_dim));
 
@@ -190,7 +190,7 @@ void VTKWriter::write_cell_data(const function::Function& u,
   const mesh::Mesh& mesh = *u.function_space()->mesh;
   const fem::DofMap& dofmap = *u.function_space()->dofmap;
   const std::size_t tdim = mesh.topology().dim();
-  const std::size_t num_cells = mesh.topology().ghost_offset(tdim);
+  const std::size_t num_cells = mesh.topology().size_local(tdim);
 
   std::string encode_string = "ascii";
 

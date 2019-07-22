@@ -326,7 +326,7 @@ void HDF5File::write(const mesh::Mesh& mesh, int cell_dim,
           = mesh.topology().shared_entities(cell_dim);
 
       std::set<int> non_local_entities;
-      if (mesh.topology().size(tdim) == mesh.topology().ghost_offset(tdim))
+      if (mesh.topology().size(tdim) == mesh.topology().size_local(tdim))
       {
         // No ghost cells - exclude shared entities which are on lower
         // rank processes
@@ -345,9 +345,9 @@ void HDF5File::write(const mesh::Mesh& mesh, int cell_dim,
         // exclusion from output
         const std::vector<std::int32_t>& cell_owners
             = mesh.topology().cell_owner();
-        const std::int32_t ghost_offset_c = mesh.topology().ghost_offset(tdim);
+        const std::int32_t ghost_offset_c = mesh.topology().size_local(tdim);
         const std::int32_t ghost_offset_e
-            = mesh.topology().ghost_offset(cell_dim);
+            = mesh.topology().size_local(cell_dim);
         for (auto& c : mesh::MeshRange<mesh::MeshEntity>(
                  mesh, tdim, mesh::MeshRangeType::GHOST))
         {
@@ -408,7 +408,7 @@ void HDF5File::write(const mesh::Mesh& mesh, int cell_dim,
       const auto& cell_index_ref = mesh.topology().global_indices(cell_dim);
       const std::vector<std::int64_t> cells(
           cell_index_ref.begin(),
-          cell_index_ref.begin() + mesh.topology().ghost_offset(cell_dim));
+          cell_index_ref.begin() + mesh.topology().size_local(cell_dim));
       write_data(cell_index_dataset, cells, global_size, mpi_io);
     }
 
@@ -689,7 +689,7 @@ void HDF5File::write_mesh_function(const mesh::MeshFunction<T>& meshfunction,
     // No duplicates - ignore ghost cells if present
     data_values.assign(meshfunction.values().data(),
                        meshfunction.values().data()
-                           + mesh.topology().ghost_offset(cell_dim));
+                           + mesh.topology().size_local(cell_dim));
   }
   else
   {
@@ -703,7 +703,7 @@ void HDF5File::write_mesh_function(const mesh::MeshFunction<T>& meshfunction,
         = mesh.topology().shared_entities(cell_dim);
 
     std::set<int> non_local_entities;
-    if (mesh.topology().size(tdim) == mesh.topology().ghost_offset(tdim))
+    if (mesh.topology().size(tdim) == mesh.topology().size_local(tdim))
     {
       // No ghost cells
       // Exclude shared entities which are on lower rank processes
@@ -721,9 +721,9 @@ void HDF5File::write_mesh_function(const mesh::MeshFunction<T>& meshfunction,
       // from output
       const std::vector<std::int32_t>& cell_owners
           = mesh.topology().cell_owner();
-      const std::int32_t ghost_offset_c = mesh.topology().ghost_offset(tdim);
+      const std::int32_t ghost_offset_c = mesh.topology().size_local(tdim);
       const std::int32_t ghost_offset_e
-          = mesh.topology().ghost_offset(cell_dim);
+          = mesh.topology().size_local(cell_dim);
       for (auto& c : mesh::MeshRange<mesh::MeshEntity>(
                mesh, tdim, mesh::MeshRangeType::GHOST))
       {
@@ -831,7 +831,7 @@ void HDF5File::write(const function::Function& u, const std::string name)
   const std::size_t tdim = mesh.topology().dim();
   std::vector<PetscInt> cell_dofs;
   std::vector<std::size_t> x_cell_dofs;
-  const std::size_t n_cells = mesh.topology().ghost_offset(tdim);
+  const std::size_t n_cells = mesh.topology().size_local(tdim);
   x_cell_dofs.reserve(n_cells);
 
   Eigen::Array<std::int64_t, Eigen::Dynamic, 1> local_to_global_map

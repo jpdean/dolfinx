@@ -436,7 +436,7 @@ xdmf_write::compute_nonlocal_entities(const mesh::Mesh& mesh, int cell_dim)
   std::set<std::uint32_t> non_local_entities;
 
   const int tdim = mesh.topology().dim();
-  bool ghosted = (topology.size(tdim) > topology.ghost_offset(tdim));
+  bool ghosted = (topology.size(tdim) > topology.size_local(tdim));
   if (!ghosted)
   {
     // No ghost cells - exclude shared entities which are on lower rank
@@ -453,8 +453,8 @@ xdmf_write::compute_nonlocal_entities(const mesh::Mesh& mesh, int cell_dim)
     // Iterate through ghost cells, adding non-ghost entities which are
     // in lower rank process cells
     const std::vector<std::int32_t>& cell_owners = topology.cell_owner();
-    const std::int32_t ghost_offset_c = topology.ghost_offset(tdim);
-    const std::int32_t ghost_offset_e = topology.ghost_offset(cell_dim);
+    const std::int32_t ghost_offset_c = topology.size_local(tdim);
+    const std::int32_t ghost_offset_e = topology.size_local(cell_dim);
     for (auto& c : mesh::MeshRange<mesh::MeshEntity>(
              mesh, tdim, mesh::MeshRangeType::GHOST))
     {
@@ -718,7 +718,7 @@ void xdmf_write::add_function(MPI_Comm mpi_comm, pugi::xml_node& xml_node,
   const std::size_t tdim = mesh.topology().dim();
   std::vector<PetscInt> cell_dofs;
   std::vector<std::size_t> x_cell_dofs;
-  const std::size_t n_cells = mesh.topology().ghost_offset(tdim);
+  const std::size_t n_cells = mesh.topology().size_local(tdim);
   x_cell_dofs.reserve(n_cells);
 
   Eigen::Array<std::int64_t, Eigen::Dynamic, 1> local_to_global_map

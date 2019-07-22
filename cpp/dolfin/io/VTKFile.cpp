@@ -161,8 +161,8 @@ std::string init(const mesh::Mesh& mesh, const std::string filename,
   clear_file(vtu_filename);
 
   // Number of cells and vertices
-  const std::size_t num_cells = mesh.topology().ghost_offset(cell_dim);
-  const std::size_t num_vertices = mesh.topology().ghost_offset(0);
+  const std::size_t num_cells = mesh.topology().size_local(cell_dim);
+  const std::size_t num_vertices = mesh.topology().size_local(0);
 
   // Write headers
   vtk_header_open(num_vertices, num_cells, vtu_filename);
