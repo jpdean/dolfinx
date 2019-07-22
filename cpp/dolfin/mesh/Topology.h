@@ -54,10 +54,13 @@ public:
   /// Return topological dimension
   int dim() const;
 
-  /// Return number of entities for given dimension (local to process)
+  /// Number of entities for given dimension (local to process)
   std::int32_t size(int dim) const;
 
-  /// Return global number of entities for given dimension
+  /// Number of ghost entries (local to process)
+  std::int32_t size_ghost(int dim) const;
+
+  /// Number of entities for given dimension across all processes
   std::int64_t size_global(int dim) const;
 
   /// Return number of regular (non-ghost) entities or equivalently,

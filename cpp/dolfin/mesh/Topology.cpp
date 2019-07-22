@@ -16,7 +16,7 @@ using namespace dolfin::mesh;
 //-----------------------------------------------------------------------------
 Topology::Topology(int dim, std::int32_t num_vertices,
                    std::int64_t num_vertices_global)
-    : _num_vertices(num_vertices), _ghost_offset(dim + 1, 0),
+    : _num_vertices(num_vertices), _ghost_offset(dim + 1, -1),
       _global_num_entities(dim + 1, -1), _global_indices(dim + 1),
       _shared_entities(dim + 1),
       _connectivity(dim + 1,
@@ -45,6 +45,27 @@ std::int32_t Topology::size(int dim) const
   return c->entity_positions().rows() - 1;
 }
 //-----------------------------------------------------------------------------
+std::int32_t Topology::size_ghost(int dim) const
+{
+  assert(dim < (int)_ghost_offset.size());
+  assert(_ghost_offset[dim] >= 0);
+  if (dim == 0)
+    return _num_vertices - _ghost_offset[0];
+  else
+  {
+    assert(dim < (int)_connectivity.size());
+    assert(!_connectivity[dim].empty());
+    auto c = _connectivity[dim][0];
+    if (!c)
+    {
+      throw std::runtime_error("Entities of dimension " + std::to_string(dim)
+                               + " have not been created.");
+    }
+
+    return (c->entity_positions().rows() - 1) - _ghost_offset[dim];
+  }
+}
+//-----------------------------------------------------------------------------
 std::int64_t Topology::size_global(int dim) const
 {
   if (_global_num_entities.empty())
@@ -58,13 +79,8 @@ std::int64_t Topology::size_global(int dim) const
 //-----------------------------------------------------------------------------
 std::int32_t Topology::ghost_offset(int dim) const
 {
-  if (_ghost_offset.empty())
-    return 0;
-  else
-  {
-    assert(dim < (int)_ghost_offset.size());
-    return _ghost_offset[dim];
-  }
+  assert(dim < (int)_ghost_offset.size());
+  return _ghost_offset[dim];
 }
 //-----------------------------------------------------------------------------
 void Topology::clear(int d0, int d1)
