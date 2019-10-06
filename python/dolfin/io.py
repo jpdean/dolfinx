@@ -92,7 +92,7 @@ class HDF5File:
                   use_partition_from_file: bool, ghost_mode):
         mesh = self._cpp_object.read_mesh(data_path, use_partition_from_file,
                                           ghost_mode)
-        mesh.geometry.coord_mapping = fem.create_coordinate_map(mesh)
+        mesh.geometry.coord_mapping = fem.coordinate_map.create(mesh)
         return mesh
 
     def read_function(self, V, name: str):
@@ -236,7 +236,7 @@ class XDMFFile:
 
     def read_mesh(self, ghost_mode):
         mesh = self._cpp_object.read_mesh(ghost_mode)
-        mesh.geometry.coord_mapping = fem.create_coordinate_map(mesh)
+        mesh.geometry.coord_mapping = fem.coordinate_map.create(mesh)
         return mesh
 
     def read_mesh_data(self, mpi_comm) -> typing.Tuple[cpp.mesh.CellType, numpy.ndarray,

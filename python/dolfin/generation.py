@@ -52,7 +52,7 @@ def UnitIntervalMesh(comm, nx, ghost_mode=cpp.mesh.GhostMode.none):
 
     """
     mesh = IntervalMesh(comm, nx, [0.0, 1.0], ghost_mode)
-    mesh.geometry.coord_mapping = fem.create_coordinate_map(mesh)
+    mesh.geometry.coord_mapping = fem.coordinate_map.create(mesh)
     return mesh
 
 
@@ -106,7 +106,7 @@ def UnitSquareMesh(comm,
     mesh = RectangleMesh(comm, [numpy.array([0.0, 0.0, 0.0]),
                                 numpy.array([1.0, 1.0, 0.0])],
                          [nx, ny], cell_type, ghost_mode, diagonal)
-    mesh.geometry.coord_mapping = fem.create_coordinate_map(mesh)
+    mesh.geometry.coord_mapping = fem.coordinate_map.create(mesh)
     return mesh
 
 
@@ -156,5 +156,5 @@ def UnitCubeMesh(comm,
     mesh = BoxMesh(comm, [numpy.array([0.0, 0.0, 0.0]),
                           numpy.array([1.0, 1.0, 1.0])],
                    [nx, ny, nz], cell_type, ghost_mode)
-    mesh.geometry.coord_mapping = fem.create_coordinate_map(mesh)
+    mesh.geometry.coord_mapping = fem.coordinate_map.create(mesh)
     return mesh

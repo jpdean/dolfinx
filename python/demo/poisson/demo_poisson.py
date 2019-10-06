@@ -101,7 +101,7 @@ mesh = RectangleMesh(
     CellType.triangle, dolfin.cpp.mesh.GhostMode.none)
 V = FunctionSpace(mesh, ("Lagrange", 1))
 
-cmap = dolfin.fem.create_coordinate_map(mesh.ufl_domain())
+cmap = dolfin.fem.coordinate_map.create(mesh.ufl_domain())
 mesh.geometry.coord_mapping = cmap
 
 # The second argument to :py:class:`FunctionSpace

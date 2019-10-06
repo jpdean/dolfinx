@@ -488,7 +488,7 @@ def test_high_order_lagrange():
         coord_dofs = mesh.coordinate_dofs().entity_points()
         x_g = mesh.geometry.points
         x_dofs = []
-        cmap = fem.create_coordinate_map(mesh.ufl_domain())
+        cmap = fem.coordinate_map.create(mesh.ufl_domain())
         for c in range(len(edges)):
             x_coord_new = np.zeros([3, 2])
             for v in range(3):

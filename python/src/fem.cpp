@@ -51,7 +51,7 @@ void fem(py::module& m)
   py::class_<ufc_form, std::shared_ptr<ufc_form>>(m, "ufc_form",
                                                   "UFC form object");
   py::class_<ufc_coordinate_mapping, std::shared_ptr<ufc_coordinate_mapping>>(
-      m, "ufc_coordinate_mapping", "UFC coordinate_mapping object");
+      m, "ufc_coordinate_map", "UFC coordinate map");
 
   // Functions to convert pointers (from JIT usually) to UFC objects
   m.def("make_ufc_finite_element",
@@ -75,13 +75,13 @@ void fem(py::module& m)
         },
         "Create a ufc_form object from a pointer.");
 
-  m.def("make_coordinate_mapping",
+  m.def("make_coordinate_map",
         [](std::uintptr_t e) {
           ufc_coordinate_mapping* p
               = reinterpret_cast<ufc_coordinate_mapping*>(e);
           return dolfin::fem::get_cmap_from_ufc_cmap(*p);
         },
-        "Create a CoordinateMapping object from a pointer to a "
+        "Create a CoordinateMap object from a pointer to a "
         "ufc_coordinate_map.");
 
   // utils
@@ -183,7 +183,7 @@ void fem(py::module& m)
   // dolfin::fem::CoordinateMapping
   py::class_<dolfin::fem::CoordinateMapping,
              std::shared_ptr<dolfin::fem::CoordinateMapping>>(
-      m, "CoordinateMapping", "Coordinate mapping object")
+      m, "CoordinateMap", "Coordinate map object")
       .def("compute_physical_coordinates",
            &dolfin::fem::CoordinateMapping::compute_physical_coordinates);
 
@@ -315,7 +315,7 @@ void fem(py::module& m)
       .def_property_readonly("rank", &dolfin::fem::Form::rank)
       .def("mesh", &dolfin::fem::Form::mesh)
       .def("function_space", &dolfin::fem::Form::function_space)
-      .def("coordinate_mapping", &dolfin::fem::Form::coordinate_mapping);
+      .def("coordinate_map", &dolfin::fem::Form::coordinate_mapping);
 
   // dolfin::fem::PETScDMCollection
   py::class_<dolfin::fem::PETScDMCollection,

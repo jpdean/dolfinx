@@ -35,7 +35,7 @@ def test_read_write_p2_mesh(tempdir):
 def test_read_write_p2_function(tempdir):
     mesh = cpp.generation.UnitDiscMesh.create(MPI.comm_world, 3,
                                               cpp.mesh.GhostMode.none)
-    cmap = fem.create_coordinate_map(mesh.ufl_domain())
+    cmap = fem.coordinate_map.create(mesh.ufl_domain())
     mesh.geometry.coord_mapping = cmap
     Q = FunctionSpace(mesh, ("Lagrange", 2))
 

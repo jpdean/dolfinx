@@ -5,14 +5,13 @@
 #
 # SPDX-License-Identifier:    LGPL-3.0-or-later
 
-import ufl
-
-from dolfin import jit
-from dolfin import fem
 from cffi import FFI
 
+import ufl
+from dolfin import fem, jit
 
-def create_coordinate_map(o):
+
+def create(o):
     """Return a compiled UFC coordinate_mapping object"""
 
     try:
