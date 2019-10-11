@@ -205,8 +205,7 @@ int main(int argc, char* argv[])
   MatAssemblyEnd(A.mat(), MAT_FINAL_ASSEMBLY);
 
   VecSet(b.vec(), 0.0);
-  VecGhostUpdateBegin(b.vec(), INSERT_VALUES, SCATTER_FORWARD);
-  VecGhostUpdateEnd(b.vec(), INSERT_VALUES, SCATTER_FORWARD);
+  la::update_ghosts(*L->function_space(0)->dofmap()->index_map, b.vec());
   dolfin::fem::assemble_vector(b.vec(), *L);
   dolfin::fem::apply_lifting(b.vec(), {a}, {{bc}}, {}, 1.0);
   VecGhostUpdateBegin(b.vec(), ADD_VALUES, SCATTER_REVERSE);

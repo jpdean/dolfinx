@@ -68,6 +68,10 @@ compute_petsc_index_sets(std::vector<const dolfin::common::IndexMap*> maps);
 void petsc_error(int error_code, std::string filename,
                  std::string petsc_function);
 
+/// Update ghost values (gathers ghost values from the owning
+/// processes)
+void update_ghosts(const common::IndexMap& map, Vec v);
+
 /// Wrapper around a PETSc Vec object, to simplify direct access to data.
 class VecWrapper
 {

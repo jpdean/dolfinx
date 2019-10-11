@@ -289,6 +289,67 @@ void dolfin::la::petsc_error(int error_code, std::string filename,
                            + std::string(desc));
 }
 //-----------------------------------------------------------------------------
+void dolfin::la::update_ghosts(const dolfin::common::IndexMap& map, Vec v)
+{
+  // In principle this function should be faster then VecGhostUpdate
+
+  Vec v_local;
+  VecGhostGetLocalForm(v, &v_local);
+
+  PetscInt size_owned = 0;
+  PetscInt size_local = 0;
+
+  VecGetSize(v, &size_owned);
+  VecGetSize(v_local, &size_local);
+
+  if (size_owned != size_local)
+  {
+    PetscScalar* local_array = nullptr;
+    PetscScalar* array = nullptr;
+
+    VecGetArray(v, &array);
+    VecGetArray(v_local, &local_array);
+
+    // Open window into owned data
+    MPI_Win win;
+    MPI_Win_create(const_cast<PetscScalar*>(array),
+                   sizeof(PetscScalar) * size_owned, sizeof(PetscScalar),
+                   MPI_INFO_NULL, map.mpi_comm(), &win);
+    MPI_Win_fence(0, win);
+
+    auto ghosts = map.ghosts();
+
+    // Fetch ghost data from owner
+    for (int i = 0; i < map.num_ghosts(); ++i)
+    {
+      // Remote process rank
+      const int process = map.owner(ghosts[i]);
+
+      // Index on remote process
+      const int remote_data_offset = ghosts[i] - map.global_offset(process);
+
+      // Move data to ghosts from the owning processes
+      // TODO : Use Atomic Operations?
+      int data_count = 1;
+      int local_data_offset = i + map.size_local();
+      MPI_Get(const_cast<PetscScalar*>(local_array) + local_data_offset,
+              data_count, dolfin::MPI::mpi_type<PetscScalar>(), process,
+              remote_data_offset, data_count,
+              dolfin::MPI::mpi_type<PetscScalar>(), win);
+    }
+
+    VecRestoreArray(v_local, &local_array);
+    VecGhostRestoreLocalForm(v, &v_local);
+
+    VecRestoreArray(v, &array);
+
+    // Synchronise and free window
+    MPI_Win_fence(0, win);
+    MPI_Win_free(&win);
+  }
+}
+
+//-----------------------------------------------------------------------------
 dolfin::la::VecWrapper::VecWrapper(Vec y, bool ghosted)
     : x(nullptr, 0), _y(y), _y_local(nullptr), _ghosted(ghosted)
 {
