@@ -55,6 +55,7 @@ test_*_tempdir
 
 # Tests
 /python/test/unit/**/*.xml
+/python/test/unit/**/_*
 /cpp/test/unit/mesh/*.{xml,m}
 /cpp/test/unit/parameter/*.{xml,xml.gz}
 /cpp/test/unit/**/*.xml

@@ -88,6 +88,9 @@ public:
   /// Get process that owns index (global block index)
   int owner(std::int64_t global_index) const;
 
+  /// Return the global offset of a given process
+  std::int64_t global_offset(unsigned int process) const;
+
   /// Return array of global indices for all indices on this process,
   /// including ghosts
   Eigen::Array<std::int64_t, Eigen::Dynamic, 1>

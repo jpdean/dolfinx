@@ -60,6 +60,12 @@ int IndexMap::owner(std::int64_t global_index) const
   return std::distance(_all_ranges.begin(), it) - 1;
 }
 //-----------------------------------------------------------------------------
+std::int64_t IndexMap::global_offset(unsigned int process) const
+{
+  assert(process < _all_ranges.size());
+  return _all_ranges[process];
+}
+//-----------------------------------------------------------------------------
 const Eigen::Array<std::int32_t, Eigen::Dynamic, 1>&
 IndexMap::ghost_owners() const
 {
