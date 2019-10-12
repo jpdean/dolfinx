@@ -208,8 +208,7 @@ int main(int argc, char* argv[])
   la::update_ghosts(*L->function_space(0)->dofmap()->index_map, b.vec());
   dolfin::fem::assemble_vector(b.vec(), *L);
   dolfin::fem::apply_lifting(b.vec(), {a}, {{bc}}, {}, 1.0);
-  VecGhostUpdateBegin(b.vec(), ADD_VALUES, SCATTER_REVERSE);
-  VecGhostUpdateEnd(b.vec(), ADD_VALUES, SCATTER_REVERSE);
+  la::apply_ghosts(*L->function_space(0)->dofmap()->index_map, b.vec());
   dolfin::fem::set_bc(b.vec(), bc, nullptr);
 
   la::PETScKrylovSolver lu(MPI_COMM_WORLD);

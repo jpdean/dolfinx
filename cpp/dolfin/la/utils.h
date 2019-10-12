@@ -72,6 +72,12 @@ void petsc_error(int error_code, std::string filename,
 /// processes)
 void update_ghosts(const common::IndexMap& map, Vec v);
 
+/// Update owned entries owned by this process and which are ghosts on
+/// other processes, i.e., have been added to by a remote process.
+/// This is more efficient that apply() when processes only add/set
+/// their owned entries and the pre-defined ghosts.
+void apply_ghosts(const common::IndexMap& map, Vec v);
+
 /// Wrapper around a PETSc Vec object, to simplify direct access to data.
 class VecWrapper
 {
