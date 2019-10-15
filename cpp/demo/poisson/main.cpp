@@ -143,6 +143,8 @@ int main(int argc, char* argv[])
   // Define boundary condition
   auto u0 = std::make_shared<function::Function>(V);
 
+  bool onesided = 0;
+
   std::vector<std::shared_ptr<const fem::DirichletBC>> bc
       = {std::make_shared<fem::DirichletBC>(V, u0, [](auto x) {
           return (x.col(0) < DBL_EPSILON or x.col(0) > 1.0 - DBL_EPSILON);
@@ -205,10 +207,33 @@ int main(int argc, char* argv[])
   MatAssemblyEnd(A.mat(), MAT_FINAL_ASSEMBLY);
 
   VecSet(b.vec(), 0.0);
-  la::update_ghosts(*L->function_space(0)->dofmap()->index_map, b.vec());
+  if (onesided)
+  {
+    la::update_ghosts(*L->function_space(0)->dofmap()->index_map, b.vec());
+  }
+  else
+  {
+    VecGhostUpdateBegin(b.vec(), INSERT_VALUES, SCATTER_FORWARD);
+    VecGhostUpdateEnd(b.vec(), INSERT_VALUES, SCATTER_FORWARD);
+  }
+
   dolfin::fem::assemble_vector(b.vec(), *L);
   dolfin::fem::apply_lifting(b.vec(), {a}, {{bc}}, {}, 1.0);
-  la::apply_ghosts(*L->function_space(0)->dofmap()->index_map, b.vec());
+
+  if (onesided)
+  {
+    la::apply_ghosts(*L->function_space(0)->dofmap()->index_map, b.vec());
+  }
+  else
+  {
+    VecGhostUpdateBegin(b.vec(), ADD_VALUES, SCATTER_REVERSE);
+    VecGhostUpdateEnd(b.vec(), ADD_VALUES, SCATTER_REVERSE);
+  }
+
+  Vec v_local;
+  VecGhostGetLocalForm(b.vec(), &v_local);
+  VecView(v_local, PETSC_VIEWER_STDOUT_WORLD);
+
   dolfin::fem::set_bc(b.vec(), bc, nullptr);
 
   la::PETScKrylovSolver lu(MPI_COMM_WORLD);
