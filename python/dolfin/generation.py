@@ -139,7 +139,7 @@ def RectangleMesh(comm,
 def UnitSquareMesh(comm,
                    nx: int,
                    ny: int,
-                   cell_type: cpp.mesh.CellType = cpp.mesh.CellType.tetrahedron,
+                   cell_type: cpp.mesh.CellType = cpp.mesh.CellType.triangle,
                    ghost_mode: cpp.mesh.GhostMode = cpp.mesh.GhostMode.none,
                    diagonal: str = "right") -> cpp.mesh.Mesh:
     """Create a mesh of a unit square with coordinate mapping attached
