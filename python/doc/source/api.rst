@@ -56,7 +56,6 @@ dolfin.fem module
    dolfin.fem.dofmap
    dolfin.fem.formmanipulations
    dolfin.fem.form
-   dolfin.fem.interpolation
    dolfin.fem.problem
    dolfin.fem.solvers
    dolfin.fem.solving

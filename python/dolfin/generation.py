@@ -20,7 +20,7 @@ __all__ = ["IntervalMesh", "UnitIntervalMesh",
 def IntervalMesh(comm,
                  n: int,
                  points: list,
-                 ghost_mode: cpp.mesh.GhostMode=cpp.mesh.GhostMode.none) -> cpp.mesh.Mesh:
+                 ghost_mode: cpp.mesh.GhostMode = cpp.mesh.GhostMode.none) -> cpp.mesh.Mesh:
     """Create an interval mesh
 
     Interval mesh of the 1D line [a,b].  Given the number of cells
@@ -62,7 +62,7 @@ def IntervalMesh(comm,
 
 def UnitIntervalMesh(comm,
                      n: int,
-                     ghost_mode: cpp.mesh.GhostMode=cpp.mesh.GhostMode.none) -> cpp.mesh.Mesh:
+                     ghost_mode: cpp.mesh.GhostMode = cpp.mesh.GhostMode.none) -> cpp.mesh.Mesh:
     """Create a mesh on the unit interval with coordinate mapping attached
 
     Interval mesh of the 1D line [0,1].  Given the number of cells
@@ -99,8 +99,8 @@ def UnitIntervalMesh(comm,
 def RectangleMesh(comm,
                   points: typing.List[numpy.array],
                   n: list,
-                  cell_type: cpp.mesh.CellType=cpp.mesh.CellType.triangle,
-                  ghost_mode: cpp.mesh.GhostMode=cpp.mesh.GhostMode.none,
+                  cell_type: cpp.mesh.CellType = cpp.mesh.CellType.triangle,
+                  ghost_mode: cpp.mesh.GhostMode = cpp.mesh.GhostMode.none,
                   diagonal: str = "right") -> cpp.mesh.Mesh:
     """Create 2D rectangle mesh spanned by two points p0 and p1
 
@@ -139,8 +139,8 @@ def RectangleMesh(comm,
 def UnitSquareMesh(comm,
                    nx: int,
                    ny: int,
-                   cell_type: cpp.mesh.CellType=cpp.mesh.CellType.tetrahedron,
-                   ghost_mode: cpp.mesh.GhostMode=cpp.mesh.GhostMode.none,
+                   cell_type: cpp.mesh.CellType = cpp.mesh.CellType.tetrahedron,
+                   ghost_mode: cpp.mesh.GhostMode = cpp.mesh.GhostMode.none,
                    diagonal: str = "right") -> cpp.mesh.Mesh:
     """Create a mesh of a unit square with coordinate mapping attached
 
@@ -179,8 +179,8 @@ def UnitSquareMesh(comm,
 def BoxMesh(comm,
             points: typing.List[numpy.array],
             n: list,
-            cell_type: cpp.mesh.CellType=cpp.mesh.CellType.tetrahedron,
-            ghost_mode: cpp.mesh.GhostMode=cpp.mesh.GhostMode.none) -> cpp.mesh.Mesh:
+            cell_type: cpp.mesh.CellType = cpp.mesh.CellType.tetrahedron,
+            ghost_mode: cpp.mesh.GhostMode = cpp.mesh.GhostMode.none) -> cpp.mesh.Mesh:
     """Create box mesh
 
     Parameters
@@ -215,8 +215,8 @@ def UnitCubeMesh(comm,
                  nx: int,
                  ny: int,
                  nz: int,
-                 cell_type: cpp.mesh.CellType=cpp.mesh.CellType.tetrahedron,
-                 ghost_mode: cpp.mesh.GhostMode=cpp.mesh.GhostMode.none) -> cpp.mesh.Mesh:
+                 cell_type: cpp.mesh.CellType = cpp.mesh.CellType.tetrahedron,
+                 ghost_mode: cpp.mesh.GhostMode = cpp.mesh.GhostMode.none) -> cpp.mesh.Mesh:
     """Create a mesh of a unit cube with coordinate mapping attached
 
     Parameters
