@@ -26,7 +26,7 @@ public:
   /// @param[in] comm MPI communicator to build the mesh on
   /// @param[in] n The number of cells.
   /// @param[in] x The end points
-  /// @param[in] ghost_mode Ghosting mode
+  /// @param[in] ghost_mode Mesh ghosting mode
   /// @code{.cpp}
   ///         // Create a mesh of 25 cells in the interval [-1,1]
   ///         IntervalMesh mesh(MPI_COMM_WORLD, 25, {-1.0, 1.0});

@@ -17,10 +17,11 @@ namespace dolfin
 namespace generation
 {
 
-/// Triangular mesh of the 2D rectangle spanned by two points p0 and p1.
-/// Given the number of cells (nx, ny) in each direction, the total
-/// number of triangles will be 2*nx*ny and the total number of vertices
-/// will be (nx + 1)*(ny + 1).
+/// Mesh of the 2D rectangle spanned by two points p0 and p1. Given the
+/// number of cells (nx, ny) in each direction, the total number of cells will
+/// be 2*nx*ny for triangular meshes and nx*ny for quadrilateral meshes.
+/// The total number of vertices will be (nx + 1)*(ny + 1) for both triangular
+/// and quadrilateral meshes.
 
 class RectangleMesh
 {
