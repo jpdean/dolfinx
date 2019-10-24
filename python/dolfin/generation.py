@@ -53,7 +53,6 @@ def IntervalMesh(comm,
     >>> from dolfin import IntervalMesh, MPI
     >>> mesh = IntervalMesh(MPI.comm_world, 25, [-1., 1.])
 
-    Create a mesh and attach cordinate mapping
 
     """
     return cpp.generation.IntervalMesh.create(comm, n, points, ghost_mode)
