@@ -387,7 +387,6 @@ void dolfin::la::update_ghosts_shm(const dolfin::common::IndexMap& map, Vec v)
     std::vector<std::int32_t> neighbours(neighbours_set.begin(),
                                          neighbours_set.end());
 
-    // -------------------------------------------------------
     // Translate groups
     MPI_Group world_group, shared_group;
 
@@ -399,15 +398,14 @@ void dolfin::la::update_ghosts_shm(const dolfin::common::IndexMap& map, Vec v)
     std::vector<std::int32_t> partners_map(neighbours.size());
     MPI_Group_translate_ranks(world_group, neighbours.size(), neighbours.data(),
                               shared_group, partners_map.data());
-    // -------------------------------------------------------
+
     // Allocate shared memory (Copy data??)
     PetscScalar* shared_memory;
     MPI_Win_allocate_shared(sizeof(PetscScalar) * size_owned,
                             sizeof(PetscScalar), MPI_INFO_NULL, shmcomm,
                             &shared_memory, &win);
 
-    for (std::int32_t j = 0; j < size_owned; j++)
-      shared_memory[j] = array[j];
+    PetscArraycpy(shared_memory, array, size_owned);
 
     // Allocate array neighbours pointers
     PetscScalar** partners_ptrs;
@@ -434,14 +432,14 @@ void dolfin::la::update_ghosts_shm(const dolfin::common::IndexMap& map, Vec v)
       // Remote process rank
       const int process = map.owner(ghosts[i]);
       const int remote_data_offset = ghosts[i] - map.global_offset(process);
-      int index = 0;
       for (std::uint32_t j = 0; j < neighbours.size(); j++)
       {
         if (neighbours[j] == process)
-          index = j;
+        {
+          int local_data_offset = i + map.size_local();
+          local_array[local_data_offset] = partners_ptrs[j][remote_data_offset];
+        }
       }
-      int local_data_offset = i + map.size_local();
-      local_array[local_data_offset] = partners_ptrs[index][remote_data_offset];
     }
     // Close RMA epoch
     MPI_Win_unlock_all(win);
