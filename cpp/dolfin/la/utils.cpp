@@ -315,7 +315,8 @@ void dolfin::la::update_ghosts(const dolfin::common::IndexMap& map, Vec v)
     MPI_Win_create(const_cast<PetscScalar*>(array),
                    sizeof(PetscScalar) * size_owned, sizeof(PetscScalar),
                    MPI_INFO_NULL, map.mpi_comm(), &win);
-    MPI_Win_fence(0, win);
+
+    MPI_Win_fence(MPI_MODE_NOPUT, win);
 
     auto ghosts = map.ghosts();
 
@@ -338,14 +339,14 @@ void dolfin::la::update_ghosts(const dolfin::common::IndexMap& map, Vec v)
               dolfin::MPI::mpi_type<PetscScalar>(), win);
     }
 
+    // Synchronise and free window
+    MPI_Win_fence(MPI_MODE_NOSUCCEED, win);
+    MPI_Win_free(&win);
+
     VecRestoreArray(v_local, &local_array);
     VecGhostRestoreLocalForm(v, &v_local);
 
     VecRestoreArray(v, &array);
-
-    // Synchronise and free window
-    MPI_Win_fence(0, win);
-    MPI_Win_free(&win);
   }
 }
 //-----------------------------------------------------------------------------
