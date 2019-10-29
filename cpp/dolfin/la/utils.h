@@ -11,6 +11,7 @@
 #include <dolfin/common/MPI.h>
 #include <petscis.h>
 #include <petscmat.h>
+#include <petscsys.h>
 #include <petscvec.h>
 #include <string>
 #include <unordered_set>

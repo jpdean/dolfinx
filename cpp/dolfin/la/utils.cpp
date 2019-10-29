@@ -355,9 +355,9 @@ void dolfin::la::update_ghosts_shm(const dolfin::common::IndexMap& map, Vec v)
 {
   MPI_Comm comm = MPI_COMM_WORLD;
 
-  MPI_Comm shmcomm; /* shm communicator  */
-  MPI_Win win;      /* shm window object */
-  int shm_size;     /* shmcomm size */
+  MPI_Comm shmcomm;
+  MPI_Win win;
+  int shm_size;
 
   MPI_Comm_split_type(comm, MPI_COMM_TYPE_SHARED, 0, MPI_INFO_NULL, &shmcomm);
   MPI_Comm_size(shmcomm, &shm_size);
@@ -388,30 +388,29 @@ void dolfin::la::update_ghosts_shm(const dolfin::common::IndexMap& map, Vec v)
                                          neighbours_set.end());
 
     // Translate groups
+    std::vector<std::int32_t> partners_map(neighbours.size());
     MPI_Group world_group, shared_group;
 
     /* create MPI groups for global communicator and shm communicator */
     MPI_Comm_group(MPI_COMM_WORLD, &world_group);
     MPI_Comm_group(shmcomm, &shared_group);
-
-    // Create map from global
-    std::vector<std::int32_t> partners_map(neighbours.size());
     MPI_Group_translate_ranks(world_group, neighbours.size(), neighbours.data(),
                               shared_group, partners_map.data());
 
-    // Allocate shared memory (Copy data??)
+    // Allocate shared memory
     PetscScalar* shared_memory;
     MPI_Win_allocate_shared(sizeof(PetscScalar) * size_owned,
                             sizeof(PetscScalar), MPI_INFO_NULL, shmcomm,
                             &shared_memory, &win);
 
-    PetscArraycpy(shared_memory, array, size_owned);
+    // PetscArraycpy(shared_memory, array, size_owned);
 
     // Allocate array neighbours pointers
     PetscScalar** partners_ptrs;
     partners_ptrs
         = (PetscScalar**)malloc(partners_map.size() * sizeof(PetscScalar*));
 
+    // Query the process-local address for remote memory
     for (std::uint32_t j = 0; j < partners_map.size(); j++)
     {
       partners_ptrs[j] = nullptr;
@@ -429,14 +428,13 @@ void dolfin::la::update_ghosts_shm(const dolfin::common::IndexMap& map, Vec v)
     MPI_Win_lock_all(MPI_MODE_NOCHECK, win);
     for (std::int32_t i = 0; i < map.num_ghosts(); ++i)
     {
-      // Remote process rank
       const int process = map.owner(ghosts[i]);
       const int remote_data_offset = ghosts[i] - map.global_offset(process);
+      const int local_data_offset = i + map.size_local();
       for (std::uint32_t j = 0; j < neighbours.size(); j++)
       {
         if (neighbours[j] == process)
         {
-          int local_data_offset = i + map.size_local();
           local_array[local_data_offset] = partners_ptrs[j][remote_data_offset];
         }
       }
