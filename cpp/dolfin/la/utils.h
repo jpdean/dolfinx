@@ -13,6 +13,7 @@
 #include <petscmat.h>
 #include <petscvec.h>
 #include <string>
+#include <unordered_set>
 #include <vector>
 
 namespace dolfin
@@ -71,6 +72,10 @@ void petsc_error(int error_code, std::string filename,
 /// Update ghost values (gathers ghost values from the owning
 /// processes)
 void update_ghosts(const common::IndexMap& map, Vec v);
+
+/// Update ghost values (gathers ghost values from the owning
+/// processes)
+void update_ghosts_shm(const common::IndexMap& map, Vec v);
 
 /// Update owned entries owned by this process and which are ghosts on
 /// other processes, i.e., have been added to by a remote process.

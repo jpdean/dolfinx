@@ -299,7 +299,7 @@ void dolfin::la::update_ghosts(const dolfin::common::IndexMap& map, Vec v)
   PetscInt size_owned = 0;
   PetscInt size_local = 0;
 
-  VecGetSize(v, &size_owned);
+  VecGetLocalSize(v, &size_owned);
   VecGetSize(v_local, &size_local);
 
   if (size_owned != size_local)
@@ -345,6 +345,111 @@ void dolfin::la::update_ghosts(const dolfin::common::IndexMap& map, Vec v)
 
     // Synchronise and free window
     MPI_Win_fence(0, win);
+    MPI_Win_free(&win);
+  }
+}
+//-----------------------------------------------------------------------------
+// Update ghosts using shared memory technique
+void dolfin::la::update_ghosts_shm(const dolfin::common::IndexMap& map, Vec v)
+{
+  MPI_Comm comm = MPI_COMM_WORLD;
+
+  MPI_Comm shmcomm; /* shm communicator  */
+  MPI_Win win;      /* shm window object */
+  int shm_size;     /* shmcomm size */
+
+  MPI_Comm_split_type(comm, MPI_COMM_TYPE_SHARED, 0, MPI_INFO_NULL, &shmcomm);
+  MPI_Comm_size(shmcomm, &shm_size);
+
+  Vec v_local;
+  VecGhostGetLocalForm(v, &v_local);
+
+  PetscInt size_owned = 0;
+  PetscInt size_local = 0;
+
+  VecGetLocalSize(v, &size_owned);
+  VecGetSize(v_local, &size_local);
+
+  // if vec is ghosted
+  if (size_local > size_owned)
+  {
+    PetscScalar* local_array = nullptr;
+    PetscScalar* array = nullptr;
+
+    VecGetArray(v, &array);
+    VecGetArray(v_local, &local_array);
+
+    auto ghosts = map.ghosts();
+    auto ghost_owners = map.ghost_owners();
+    std::unordered_set<std::int32_t> neighbours_set(
+        ghost_owners.data(), ghost_owners.data() + ghost_owners.rows());
+    std::vector<std::int32_t> neighbours(neighbours_set.begin(),
+                                         neighbours_set.end());
+
+    // -------------------------------------------------------
+    // Translate groups
+    MPI_Group world_group, shared_group;
+
+    /* create MPI groups for global communicator and shm communicator */
+    MPI_Comm_group(MPI_COMM_WORLD, &world_group);
+    MPI_Comm_group(shmcomm, &shared_group);
+
+    // Create map from global
+    std::vector<std::int32_t> partners_map(neighbours.size());
+    MPI_Group_translate_ranks(world_group, neighbours.size(), neighbours.data(),
+                              shared_group, partners_map.data());
+    // -------------------------------------------------------
+    // Allocate shared memory (Copy data??)
+    PetscScalar* shared_memory;
+    MPI_Win_allocate_shared(sizeof(PetscScalar) * size_owned,
+                            sizeof(PetscScalar), MPI_INFO_NULL, shmcomm,
+                            &shared_memory, &win);
+
+    for (std::int32_t j = 0; j < size_owned; j++)
+      shared_memory[j] = array[j];
+
+    // Allocate array neighbours pointers
+    PetscScalar** partners_ptrs;
+    partners_ptrs
+        = (PetscScalar**)malloc(partners_map.size() * sizeof(PetscScalar*));
+
+    for (std::uint32_t j = 0; j < partners_map.size(); j++)
+    {
+      partners_ptrs[j] = nullptr;
+      if (partners_map[j] != MPI_UNDEFINED)
+      {
+        std::int32_t remote_rank = partners_map[j];
+        std::int64_t sz = 0;
+        int disp_unit = 0;
+        MPI_Win_shared_query(win, remote_rank, &sz, &disp_unit,
+                             &partners_ptrs[j]);
+      }
+    }
+
+    // Entering MPI-3 RMA access epoch required for MPI-3 shm
+    MPI_Win_lock_all(MPI_MODE_NOCHECK, win);
+    for (std::int32_t i = 0; i < map.num_ghosts(); ++i)
+    {
+      // Remote process rank
+      const int process = map.owner(ghosts[i]);
+      const int remote_data_offset = ghosts[i] - map.global_offset(process);
+      int index = 0;
+      for (std::uint32_t j = 0; j < neighbours.size(); j++)
+      {
+        if (neighbours[j] == process)
+          index = j;
+      }
+      int local_data_offset = i + map.size_local();
+      local_array[local_data_offset] = partners_ptrs[index][remote_data_offset];
+    }
+    // Close RMA epoch
+    MPI_Win_unlock_all(win);
+
+    VecRestoreArray(v_local, &local_array);
+    VecGhostRestoreLocalForm(v, &v_local);
+    VecRestoreArray(v, &array);
+
+    // Synchronise and free window
     MPI_Win_free(&win);
   }
 }
