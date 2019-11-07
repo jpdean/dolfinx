@@ -49,7 +49,8 @@ public:
 
   /// Build dofmap
   static std::tuple<std::unique_ptr<common::IndexMap>,
-                    Eigen::Array<PetscInt, Eigen::Dynamic, 1>>
+                    Eigen::Array<PetscInt, Eigen::Dynamic, 1>,
+                    Eigen::Array<bool, Eigen::Dynamic, 1>, bool>
   build(const mesh::Mesh& mesh, const ElementDofLayout& element_dof_layout,
         const std::int32_t block_size);
 };

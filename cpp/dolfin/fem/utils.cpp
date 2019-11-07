@@ -525,8 +525,26 @@ fem::create_element_dof_layout(const ufc_dofmap& dofmap,
   for (int i = 0; i < 4; ++i)
     entity_block_size[i] = dofmap.entity_block_size[i];
 
+  bool contains_vectors = false;
+  auto edav = dofmap.entity_dofs_are_vector;
+  for (int i = 0; i < 4; ++i)
+    if (edav[i])
+    {
+      contains_vectors = true;
+      break;
+    }
+  if (!contains_vectors)
+  {
+    for (std::size_t i = 0; i < sub_dofmaps.size(); ++i)
+      if (sub_dofmaps[i]->contains_vectors())
+      {
+        contains_vectors = true;
+        break;
+      }
+  }
+
   return fem::ElementDofLayout(block_size, entity_dofs, parent_map, sub_dofmaps,
-                               cell_type, entity_block_size);
+                               cell_type, entity_block_size, contains_vectors);
 }
 //-----------------------------------------------------------------------------
 fem::DofMap fem::create_dofmap(const ufc_dofmap& ufc_dofmap,

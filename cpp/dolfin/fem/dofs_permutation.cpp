@@ -453,8 +453,153 @@ generate_permutations(const mesh::Mesh& mesh,
   return output;
 }
 //-----------------------------------------------------------------------------
+Eigen::Array<bool, Eigen::Dynamic, 1>
+compute_reversals_triangle(const mesh::Mesh& mesh,
+                           const fem::ElementDofLayout& dof_layout)
+{
+  // FIXME: Should this be computed inside compute_ordering_triangle
+  //        as the checks are all the same as in there
+  // TODO: mixed elements
+  const int ndofs = dof_layout.num_dofs();
+  const int num_cells = mesh.num_entities(mesh.topology().dim());
+
+  Eigen::Array<bool, Eigen::Dynamic, 1> reverse_dofs(num_cells * ndofs);
+  reverse_dofs.fill(false);
+
+  const int edges[3][2] = {{1, 2}, {0, 2}, {0, 1}};
+
+  for (int cell_n = 0; cell_n < num_cells; ++cell_n)
+  {
+    const mesh::MeshEntity cell(mesh, 2, cell_n);
+    const std::int32_t* vertices = cell.entities(0);
+
+    for (int edge_n = 0; edge_n < 3; ++edge_n)
+      if (vertices[edges[edge_n][0]] > vertices[edges[edge_n][1]])
+      {
+        const Eigen::Array<int, Eigen::Dynamic, 1> edge
+            = dof_layout.entity_dofs(1, edge_n);
+        for (int i = 0; i < edge.size(); ++i)
+          reverse_dofs[cell_n * ndofs + edge(i)] = true;
+      }
+    // Set the orders for the face rotation and reflection
+    const std::array<int, 2> tri_orders
+        = calculate_triangle_orders(vertices[0], vertices[1], vertices[2]);
+    if (tri_orders[1] > 0)
+    {
+      const Eigen::Array<int, Eigen::Dynamic, 1> face
+          = dof_layout.entity_dofs(2, 0);
+      for (int i = 0; i < face.size(); ++i)
+        reverse_dofs[cell_n * ndofs + face(i)] = true;
+    }
+  }
+
+  return reverse_dofs;
+}
+//-----------------------------------------------------------------------------
+Eigen::Array<bool, Eigen::Dynamic, 1>
+compute_reversals_tetrahedron(const mesh::Mesh& mesh,
+                              const fem::ElementDofLayout& dof_layout)
+{
+  // FIXME: Should this be computed inside compute_ordering_triangle
+  //        as the checks are all the same as in there
+  // TODO: mixed elements
+  const int ndofs = dof_layout.num_dofs();
+  const int num_cells = mesh.num_entities(mesh.topology().dim());
+
+  Eigen::Array<bool, Eigen::Dynamic, 1> reverse_dofs(num_cells * ndofs);
+  reverse_dofs.fill(false);
+
+  const int edges[6][2] = {{2, 3}, {1, 3}, {1, 2}, {0, 3}, {0, 2}, {0, 1}};
+
+  const int faces[4][3] = {{1, 2, 3}, {0, 2, 3}, {0, 1, 3}, {0, 1, 2}};
+
+  for (int cell_n = 0; cell_n < num_cells; ++cell_n)
+  {
+    const mesh::MeshEntity cell(mesh, 3, cell_n);
+    const std::int32_t* vertices = cell.entities(0);
+
+    for (int edge_n = 0; edge_n < 6; ++edge_n)
+      if (vertices[edges[edge_n][0]] > vertices[edges[edge_n][1]])
+      {
+        const Eigen::Array<int, Eigen::Dynamic, 1> edge
+            = dof_layout.entity_dofs(1, edge_n);
+        for (int i = 0; i < edge.size(); ++i)
+          reverse_dofs[cell_n * ndofs + edge(i)] = true;
+      }
+
+    for (int face_n = 0; face_n < 4; ++face_n)
+    {
+      const std::array<int, 2> tri_orders = calculate_triangle_orders(
+          vertices[faces[face_n][0]], vertices[faces[face_n][1]],
+          vertices[faces[face_n][2]]);
+      if (tri_orders[1])
+      {
+        const Eigen::Array<int, Eigen::Dynamic, 1> face
+            = dof_layout.entity_dofs(2, face_n);
+        for (int i = 0; i < face.size(); ++i)
+          reverse_dofs[cell_n * ndofs + face(i)] = true;
+      }
+    }
+    // Set the orders for the volume rotations and reflections
+    const std::array<int, 4> tet_orders = calculate_tetrahedron_orders(
+        vertices[0], vertices[1], vertices[2], vertices[3]);
+    if (tet_orders[3])
+    {
+      const Eigen::Array<int, Eigen::Dynamic, 1> volume
+          = dof_layout.entity_dofs(3, 0);
+      for (int i = 0; i < volume.size(); ++i)
+        reverse_dofs[cell_n * ndofs + volume(i)] = true;
+    }
+  }
+
+  return reverse_dofs;
+}
+//-----------------------------------------------------------------------------
 } // namespace
 
+//-----------------------------------------------------------------------------
+Eigen::Array<bool, Eigen::Dynamic, 1>
+fem::compute_reverse_dofs(const mesh::Mesh& mesh,
+                          const fem::ElementDofLayout& dof_layout)
+{
+  Eigen::Array<bool, Eigen::Dynamic, 1> reverse_dofs;
+  switch (mesh.cell_type())
+  {
+  case (mesh::CellType::triangle):
+    reverse_dofs = compute_reversals_triangle(mesh, dof_layout);
+    break;
+  case (mesh::CellType::tetrahedron):
+    reverse_dofs = compute_reversals_tetrahedron(mesh, dof_layout);
+    break;
+
+  // temporarily do nothing for cell types not yet implemented
+  case (mesh::CellType::hexahedron):
+    reverse_dofs.resize(mesh.num_entities(mesh.topology().dim())
+                        * dof_layout.num_dofs());
+    reverse_dofs.fill(false);
+    break;
+  case (mesh::CellType::quadrilateral):
+    reverse_dofs.resize(mesh.num_entities(mesh.topology().dim())
+                        * dof_layout.num_dofs());
+    reverse_dofs.fill(false);
+    break;
+  case (mesh::CellType::interval):
+    reverse_dofs.resize(mesh.num_entities(mesh.topology().dim())
+                        * dof_layout.num_dofs());
+    reverse_dofs.fill(false);
+    break;
+  case (mesh::CellType::point):
+    reverse_dofs.resize(mesh.num_entities(mesh.topology().dim())
+                        * dof_layout.num_dofs());
+    reverse_dofs.fill(false);
+    break;
+  default:
+    // The function should exit before this is reached
+    throw std::runtime_error("Unrecognised cell type.");
+  }
+
+  return reverse_dofs;
+}
 //-----------------------------------------------------------------------------
 Eigen::Array<int, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>
 fem::compute_dof_permutations(const mesh::Mesh& mesh,

@@ -19,10 +19,11 @@ ElementDofLayout::ElementDofLayout(
     int block_size, const std::vector<std::vector<std::set<int>>>& entity_dofs,
     const std::vector<int>& parent_map,
     const std::vector<std::shared_ptr<const ElementDofLayout>> sub_dofmaps,
-    const mesh::CellType cell_type, const std::array<int, 4> entity_block_size)
+    const mesh::CellType cell_type, const std::array<int, 4> entity_block_size,
+    const bool contains_vectors)
     : _block_size(block_size), _parent_map(parent_map), _num_dofs(0),
       _entity_dofs(entity_dofs), _sub_dofmaps(sub_dofmaps),
-      _entity_block_size(entity_block_size)
+      _entity_block_size(entity_block_size), _contains_vectors(contains_vectors)
 {
   // TODO: Handle global support dofs
 

@@ -53,6 +53,9 @@ struct DofMapStructure
   std::vector<std::int32_t> cell_ptr;
   std::vector<std::int64_t> global_indices;
 
+  bool contains_vectors;
+  Eigen::Array<bool, Eigen::Dynamic, 1> reverse_dofs;
+
   std::int32_t num_cells() const { return cell_ptr.size() - 1; }
   std::int32_t num_dofs(std::int32_t cell) const
   {
@@ -346,6 +349,9 @@ DofMapStructure build_basic_dofmap(const mesh::Mesh& mesh,
   const Eigen::Array<int, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>
       permutations = fem::compute_dof_permutations(mesh, element_dof_layout);
 
+  dofmap.contains_vectors = element_dof_layout.contains_vectors();
+  if (dofmap.contains_vectors)
+    dofmap.reverse_dofs = fem::compute_reverse_dofs(mesh, element_dof_layout);
   // Build dofmaps from ElementDofmap
   for (auto& cell : mesh::MeshRange(mesh, D, mesh::MeshRangeType::ALL))
   {
@@ -678,18 +684,21 @@ DofMapBuilder::build(const mesh::Mesh& mesh,
   const int bs = element_dof_layout->block_size();
   std::shared_ptr<common::IndexMap> index_map;
   Eigen::Array<PetscInt, Eigen::Dynamic, 1> dofmap;
+  Eigen::Array<bool, Eigen::Dynamic, 1> reverse_dofs;
+  bool contains_vectors;
   if (bs == 1)
   {
-    std::tie(index_map, dofmap)
+    std::tie(index_map, dofmap, reverse_dofs, contains_vectors)
         = DofMapBuilder::build(mesh, *element_dof_layout, 1);
   }
   else
   {
-    std::tie(index_map, dofmap)
+    std::tie(index_map, dofmap, reverse_dofs, contains_vectors)
         = DofMapBuilder::build(mesh, *element_dof_layout->sub_dofmap({0}), bs);
   }
 
-  return fem::DofMap(element_dof_layout, index_map, dofmap);
+  return fem::DofMap(element_dof_layout, index_map, dofmap, reverse_dofs,
+                     contains_vectors);
 }
 //-----------------------------------------------------------------------------
 fem::DofMap DofMapBuilder::build_submap(const DofMap& dofmap_parent,
@@ -719,12 +728,28 @@ fem::DofMap DofMapBuilder::build_submap(const DofMap& dofmap_parent,
     for (std::int32_t i = 0; i < dofs_per_cell; ++i)
       dofmap[c * dofs_per_cell + i] = cell_dmap_parent[element_map_view[i]];
   }
+  bool contains_vectors = element_dof_layout->contains_vectors();
+  Eigen::Array<bool, Eigen::Dynamic, 1> reverse_dofs;
+  if (contains_vectors)
+  {
+    reverse_dofs.resize(dofmap.size());
+    for (auto& cell : mesh::MeshRange(mesh, D))
+    {
+      const int c = cell.index();
+      auto cell_reverse_parent = dofmap_parent.cell_reverse_dofs(c);
+      for (std::int32_t i = 0; i < dofs_per_cell; ++i)
+        reverse_dofs[c * dofs_per_cell + i]
+            = cell_reverse_parent[element_map_view[i]];
+    }
+  }
 
-  return DofMap(element_dof_layout, dofmap_parent.index_map, dofmap);
+  return DofMap(element_dof_layout, dofmap_parent.index_map, dofmap,
+                reverse_dofs, contains_vectors);
 }
 //-----------------------------------------------------------------------------
 std::tuple<std::unique_ptr<common::IndexMap>,
-           Eigen::Array<PetscInt, Eigen::Dynamic, 1>>
+           Eigen::Array<PetscInt, Eigen::Dynamic, 1>,
+           Eigen::Array<bool, Eigen::Dynamic, 1>, bool>
 DofMapBuilder::build(const mesh::Mesh& mesh,
                      const ElementDofLayout& element_dof_layout,
                      const std::int32_t block_size)
@@ -817,6 +842,8 @@ DofMapBuilder::build(const mesh::Mesh& mesh,
     }
   }
 
-  return std::make_tuple(std::move(index_map), std::move(dofmap));
+  return std::make_tuple(std::move(index_map), std::move(dofmap),
+                         std::move(node_graph0.reverse_dofs),
+                         node_graph0.contains_vectors);
 }
 //-----------------------------------------------------------------------------

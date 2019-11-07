@@ -29,5 +29,10 @@ Eigen::Array<int, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>
 compute_dof_permutations(const mesh::Mesh& mesh,
                          const fem::ElementDofLayout& dof_layout);
 
+/// Documentation
+Eigen::Array<bool, Eigen::Dynamic, 1>
+compute_reverse_dofs(const mesh::Mesh& mesh,
+                     const fem::ElementDofLayout& dof_layout);
+
 } // namespace fem
 } // namespace dolfin

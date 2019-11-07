@@ -127,21 +127,32 @@ fem::DofMap build_collapsed_dofmap(const DofMap& dofmap_view,
     _dofmap[i] = old_to_new[dof_view];
   }
 
+  const Eigen::Array<bool, Eigen::Dynamic, 1>& _reverse_dofs
+      = dofmap_view.reverse_dofs_array();
+  bool _contains_vectors = dofmap_view.contains_vectors();
+
   // Dimension sanity checks
   assert(element_dof_layout);
   assert(_dofmap.size()
          == (mesh.num_entities(tdim) * element_dof_layout->num_dofs()));
+  assert(!_contains_vectors
+         || _reverse_dofs.size()
+                == (mesh.num_entities(tdim) * element_dof_layout->num_dofs()));
 
-  return fem::DofMap(element_dof_layout, index_map, _dofmap);
+  return fem::DofMap(element_dof_layout, index_map, _dofmap, _reverse_dofs,
+                     _contains_vectors);
 }
 } // namespace
 
 //-----------------------------------------------------------------------------
 DofMap::DofMap(std::shared_ptr<const ElementDofLayout> element_dof_layout,
                std::shared_ptr<const common::IndexMap> index_map,
-               const Eigen::Array<PetscInt, Eigen::Dynamic, 1>& dofmap)
+               const Eigen::Array<PetscInt, Eigen::Dynamic, 1>& dofmap,
+               const Eigen::Array<bool, Eigen::Dynamic, 1>& reverse_dofs,
+               bool contains_vectors)
     : element_dof_layout(element_dof_layout), index_map(index_map),
-      _dofmap(dofmap)
+      _dofmap(dofmap), _reverse_dofs(reverse_dofs),
+      _contains_vectors(contains_vectors)
 {
   // Do nothing
 }
@@ -211,6 +222,11 @@ void DofMap::set(Eigen::Ref<Eigen::Matrix<PetscScalar, Eigen::Dynamic, 1>> x,
 const Eigen::Array<PetscInt, Eigen::Dynamic, 1>& DofMap::dof_array() const
 {
   return _dofmap;
+}
+//-----------------------------------------------------------------------------
+const Eigen::Array<bool, Eigen::Dynamic, 1>& DofMap::reverse_dofs_array() const
+{
+  return _reverse_dofs;
 }
 //-----------------------------------------------------------------------------
 std::string DofMap::str(bool verbose) const

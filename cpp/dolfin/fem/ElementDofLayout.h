@@ -39,7 +39,7 @@ public:
       const std::vector<int>& parent_map,
       const std::vector<std::shared_ptr<const ElementDofLayout>> sub_dofmaps,
       const mesh::CellType cell_type,
-      const std::array<int, 4> entity_block_size);
+      const std::array<int, 4> entity_block_size, const bool contains_vectors);
 
   /// Copy-like constructor with option to reset (clear) parent map
   ElementDofLayout(const ElementDofLayout& element_dof_layout,
@@ -123,6 +123,9 @@ public:
   ///         another map).
   bool is_view() const;
 
+  /// True iff the dofmap contains vector functions
+  bool contains_vectors() const { return _contains_vectors; }
+
 private:
   // Block size
   int _block_size;
@@ -150,7 +153,10 @@ private:
   // List of sub dofmaps
   std::vector<std::shared_ptr<const ElementDofLayout>> _sub_dofmaps;
 
+  // The block size on each entity
   std::array<int, 4> _entity_block_size;
+
+  bool _contains_vectors;
 };
 } // namespace fem
 } // namespace dolfin

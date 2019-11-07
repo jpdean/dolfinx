@@ -47,7 +47,9 @@ public:
   /// indices.
   DofMap(std::shared_ptr<const ElementDofLayout> element_dof_layout,
          std::shared_ptr<const common::IndexMap> index_map,
-         const Eigen::Array<PetscInt, Eigen::Dynamic, 1>& dofmap);
+         const Eigen::Array<PetscInt, Eigen::Dynamic, 1>& dofmap,
+         const Eigen::Array<bool, Eigen::Dynamic, 1>& reverse_dofs,
+         bool contains_vectors);
 
 public:
   // Copy constructor
@@ -76,6 +78,18 @@ public:
     const int index = cell_index * cell_dimension;
     assert(index + cell_dimension <= _dofmap.size());
     return _dofmap.segment(index, cell_dimension);
+  }
+
+  /// Says which local dofs need their direction to be reversed
+  /// @param[in] cell_index The cell index
+  //  @return A bool for each dofs saying whether or not it should be reversed
+  auto cell_reverse_dofs(int cell_index) const
+  {
+    assert(element_dof_layout);
+    const int cell_dimension = element_dof_layout->num_dofs();
+    const int index = cell_index * cell_dimension;
+    assert(index + cell_dimension <= _reverse_dofs.size());
+    return _reverse_dofs.segment(index, cell_dimension);
   }
 
   /// Extract subdofmap component
@@ -109,6 +123,9 @@ public:
   /// Get dofmap array
   const Eigen::Array<PetscInt, Eigen::Dynamic, 1>& dof_array() const;
 
+  /// Get reverse dofs array
+  const Eigen::Array<bool, Eigen::Dynamic, 1>& reverse_dofs_array() const;
+
   // FIXME: can this be removed?
   /// Return list of dof indices on this process that belong to mesh
   /// entities of dimension dim
@@ -122,9 +139,18 @@ public:
   /// processes
   std::shared_ptr<const common::IndexMap> index_map;
 
+  /// Tells whether or not the dofmap contains vector functions
+  bool contains_vectors() const { return _contains_vectors; }
+
 private:
   // Cell-local-to-dof map (dofs for cell dofmap[i])
   Eigen::Array<PetscInt, Eigen::Dynamic, 1> _dofmap;
+
+  // Which local dofs should be reversed?
+  Eigen::Array<bool, Eigen::Dynamic, 1> _reverse_dofs;
+
+  // Are any of the dofs vectors?
+  bool _contains_vectors;
 };
 } // namespace fem
 } // namespace dolfin
