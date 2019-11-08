@@ -284,6 +284,7 @@ void Function::eval(
 //-----------------------------------------------------------------------------
 void Function::interpolate(const Function& v)
 {
+  /// TODO: work out if reversing affects interpolation
   assert(_function_space);
   la::VecWrapper x(_vector.vec());
   _function_space->interpolate(x.x, v);
