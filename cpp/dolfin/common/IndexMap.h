@@ -168,6 +168,8 @@ private:
   // Owning process for each ghost index
   Eigen::Array<std::int32_t, Eigen::Dynamic, 1> _ghost_owners;
 
+  std::vector<std::vector<std::int32_t>> _remotes;
+
   template <typename T>
   void scatter_fwd_impl(const std::vector<T>& local_data,
                         std::vector<T>& remote_data, int n) const;

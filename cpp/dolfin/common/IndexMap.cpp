@@ -65,6 +65,18 @@ IndexMap::IndexMap(MPI_Comm mpi_comm, std::int32_t local_size,
   s << "\n---------------";
 
   std::cout << s.str() << "\n";
+
+  std::vector<std::vector<std::int32_t>> send_index(mpi_size);
+  _remotes.resize(mpi_size);
+
+  // Send desired index to remote
+  for (int i = 0; i < _ghosts.size(); ++i)
+  {
+    int p = _ghost_owners[i];
+    send_index[p].push_back(_ghosts[i] - _all_ranges[p]);
+  }
+
+  MPI::all_to_all(_mpi_comm, send_index, _remotes);
 }
 //-----------------------------------------------------------------------------
 std::array<std::int64_t, 2> IndexMap::local_range() const
@@ -170,29 +182,34 @@ void IndexMap::scatter_fwd_impl(const std::vector<T>& local_data,
   assert(local_data.size() == n * _size_local);
   remote_data.resize(n * num_ghosts());
 
-  // Open window into owned data
-  MPI_Win win;
-  MPI_Win_create(const_cast<T*>(local_data.data()), sizeof(T) * n * _size_local,
-                 sizeof(T), MPI_INFO_NULL, _mpi_comm, &win);
-  MPI_Win_fence(0, win);
+  int mpi_size = MPI::size(_mpi_comm);
+  std::vector<std::vector<T>> send_data(mpi_size);
+  std::vector<std::vector<T>> recv_data(mpi_size);
 
-  // Fetch ghost data from owner
-  for (int i = 0; i < num_ghosts(); ++i)
+  for (int p = 0; p < mpi_size; ++p)
   {
-    // Remote process rank
-    const int p = _ghost_owners[i];
+    const std::vector<std::int32_t>& rp = _remotes[p];
 
-    // Index on remote process
-    const int remote_data_offset = _ghosts[i] - _all_ranges[p];
-
-    // Stack up requests
-    MPI_Get(remote_data.data() + n * i, n, dolfin::MPI::mpi_type<T>(), p,
-            n * remote_data_offset, n, dolfin::MPI::mpi_type<T>(), win);
+    for (std::size_t i = 0; i < rp.size(); ++i)
+    {
+      send_data[p].insert(send_data[p].end(), local_data.begin() + rp[i] * n,
+                          local_data.begin() + rp[i] * (n + 1));
+    }
   }
 
-  // Synchronise and free window
-  MPI_Win_fence(0, win);
-  MPI_Win_free(&win);
+  MPI::all_to_all(_mpi_comm, send_data, recv_data);
+
+  std::vector<int> count(mpi_size, 0);
+  for (int i = 0; i < _ghosts.size(); ++i)
+  {
+    int p = _ghost_owners[i];
+    std::copy(recv_data[p].begin() + count[p],
+              recv_data[p].begin() + count[p] + n, remote_data.begin() + i * n);
+    count[p] += n;
+  }
+
+  for (int p = 0; p < mpi_size; ++p)
+    assert(count[p] == (int)recv_data[p].size());
 }
 //-----------------------------------------------------------------------------
 template <typename T>
