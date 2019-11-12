@@ -35,36 +35,37 @@ IndexMap::IndexMap(MPI_Comm mpi_comm, std::int32_t local_size,
     assert(_ghost_owners[i] != _myrank);
   }
 
-  std::set<int> ghost_set(_ghost_owners.data(),
-                          _ghost_owners.data() + _ghost_owners.size());
-  std::vector<int> sources(1, _myrank);
-  std::vector<int> degrees(1, ghost_set.size());
-  std::vector<int> dests(ghost_set.begin(), ghost_set.end());
+  // std::set<int> ghost_set(_ghost_owners.data(),
+  //                         _ghost_owners.data() + _ghost_owners.size());
+  // std::vector<int> sources(1, _myrank);
+  // std::vector<int> degrees(1, ghost_set.size());
+  // std::vector<int> dests(ghost_set.begin(), ghost_set.end());
 
-  MPI_Dist_graph_create(_mpi_comm, sources.size(), sources.data(),
-                        degrees.data(), dests.data(), MPI_UNWEIGHTED,
-                        MPI_INFO_NULL, false, &_neighbour_comm);
+  // MPI_Dist_graph_create(_mpi_comm, sources.size(), sources.data(),
+  //                       degrees.data(), dests.data(), MPI_UNWEIGHTED,
+  //                       MPI_INFO_NULL, false, &_neighbour_comm);
 
-  int in_degree, out_degree, w;
-  MPI_Dist_graph_neighbors_count(_neighbour_comm, &in_degree, &out_degree, &w);
+  // int in_degree, out_degree, w;
+  // MPI_Dist_graph_neighbors_count(_neighbour_comm, &in_degree, &out_degree,
+  // &w);
 
-  sources.resize(in_degree);
-  dests.resize(out_degree);
-  MPI_Dist_graph_neighbors(_neighbour_comm, in_degree, sources.data(), NULL,
-                           out_degree, dests.data(), NULL);
+  // sources.resize(in_degree);
+  // dests.resize(out_degree);
+  // MPI_Dist_graph_neighbors(_neighbour_comm, in_degree, sources.data(), NULL,
+  //                          out_degree, dests.data(), NULL);
 
-  std::stringstream s;
+  // std::stringstream s;
 
-  s << "RANK = " << _myrank << "\n----------------\n";
-  s << "Sources(" << in_degree << ") = ";
-  for (auto& q : sources)
-    s << q << " ";
-  s << "\n---------------\n Dests(" << out_degree << ") = ";
-  for (auto& q : dests)
-    s << q << " ";
-  s << "\n---------------";
+  // s << "RANK = " << _myrank << "\n----------------\n";
+  // s << "Sources(" << in_degree << ") = ";
+  // for (auto& q : sources)
+  //   s << q << " ";
+  // s << "\n---------------\n Dests(" << out_degree << ") = ";
+  // for (auto& q : dests)
+  //   s << q << " ";
+  // s << "\n---------------";
 
-  std::cout << s.str() << "\n";
+  // std::cout << s.str() << "\n";
 
   std::vector<std::vector<std::int32_t>> send_index(mpi_size);
   _remotes.resize(mpi_size);
@@ -193,7 +194,7 @@ void IndexMap::scatter_fwd_impl(const std::vector<T>& local_data,
     for (std::size_t i = 0; i < rp.size(); ++i)
     {
       send_data[p].insert(send_data[p].end(), local_data.begin() + rp[i] * n,
-                          local_data.begin() + rp[i] * (n + 1));
+                          local_data.begin() + rp[i] * n + n);
     }
   }
 
@@ -220,29 +221,29 @@ void IndexMap::scatter_rev_impl(std::vector<T>& local_data,
   assert((std::int32_t)remote_data.size() == n * num_ghosts());
   local_data.resize(n * size_local(), 0);
 
-  // Open window into local data array
-  MPI_Win win;
-  MPI_Win_create(local_data.data(), sizeof(T) * n * size_local(), sizeof(T),
-                 MPI_INFO_NULL, _mpi_comm, &win);
-  MPI_Win_fence(0, win);
+  int mpi_size = MPI::size(_mpi_comm);
+  std::vector<std::vector<T>> send_data(mpi_size);
+  std::vector<std::vector<T>> recv_data(mpi_size);
 
-  // 'Put' (accumulate) ghost data onto owning process
-  for (int i = 0; i < num_ghosts(); ++i)
+  for (int i = 0; i < _ghosts.size(); ++i)
   {
-
-    // Remote owning process
-    const int p = _ghost_owners[i];
-
-    // Index on remote process
-    const int remote_data_offset = _ghosts[i] - _all_ranges[p];
-
-    // Stack up requests (sum)
-    MPI_Accumulate(remote_data.data() + n * i, n, MPI::mpi_type<T>(), p,
-                   n * remote_data_offset, n, MPI::mpi_type<T>(), op, win);
+    int p = _ghost_owners[i];
+    send_data[p].insert(send_data[p].end(), remote_data.begin() + i * n,
+                        remote_data.begin() + i * n + n);
   }
 
-  // Synchronise and free window
-  MPI_Win_fence(0, win);
-  MPI_Win_free(&win);
+  MPI::all_to_all(_mpi_comm, send_data, recv_data);
+
+  for (int p = 0; p < mpi_size; ++p)
+  {
+    const std::vector<std::int32_t>& rp = _remotes[p];
+    assert(recv_data[p].size() == rp.size() * n);
+
+    for (std::size_t i = 0; i < rp.size(); ++i)
+    {
+      for (int j = 0; j < n; ++j)
+        local_data[rp[i] * n + j] = recv_data[p][i * n + j];
+    }
+  }
 }
 //-----------------------------------------------------------------------------
