@@ -231,27 +231,49 @@ void IndexMap::scatter_rev_impl(std::vector<T>& local_data,
   local_data.resize(n * size_local(), 0);
 
   int mpi_size = MPI::size(_mpi_comm);
-  std::vector<std::vector<T>> send_data(mpi_size);
-  std::vector<std::vector<T>> recv_data(mpi_size);
 
+  std::vector<int> send_data_sizes(mpi_size, 0);
+  for (int i = 0; i < _ghosts.size(); ++i)
+    send_data_sizes[_ghost_owners[i]] += n;
+  std::vector<int> send_data_offsets = {0};
+  for (int q : send_data_sizes)
+    send_data_offsets.push_back(send_data_offsets.back() + q);
+  std::vector<T> send_data(send_data_offsets.back());
+
+  // Copy offsets
+  std::vector<int> count(send_data_offsets);
   for (int i = 0; i < _ghosts.size(); ++i)
   {
     int p = _ghost_owners[i];
-    send_data[p].insert(send_data[p].end(), remote_data.begin() + i * n,
-                        remote_data.begin() + i * n + n);
+    std::copy(remote_data.begin() + i * n, remote_data.begin() + i * n + n,
+              send_data.begin() + count[p]);
+    count[p] += n;
   }
 
-  MPI::all_to_all(_mpi_comm, send_data, recv_data);
+  std::vector<int> recv_data_offsets = {0};
+  std::vector<int> recv_data_sizes;
+  for (int p = 0; p < mpi_size; ++p)
+  {
+    int rpsize = _remotes[p].size() * n;
+    recv_data_sizes.push_back(rpsize);
+    recv_data_offsets.push_back(recv_data_offsets.back() + rpsize);
+  }
+  std::vector<T> recv_data(recv_data_offsets.back());
+
+  MPI_Alltoallv(send_data.data(), send_data_sizes.data(),
+                send_data_offsets.data(), MPI::mpi_type<T>(), recv_data.data(),
+                recv_data_sizes.data(), recv_data_offsets.data(),
+                MPI::mpi_type<T>(), _mpi_comm);
 
   for (int p = 0; p < mpi_size; ++p)
   {
     const std::vector<std::int32_t>& rp = _remotes[p];
-    assert(recv_data[p].size() == rp.size() * n);
+    assert(recv_data_sizes[p] == (int)rp.size() * n);
 
     for (std::size_t i = 0; i < rp.size(); ++i)
     {
       for (int j = 0; j < n; ++j)
-        local_data[rp[i] * n + j] = recv_data[p][i * n + j];
+        local_data[rp[i] * n + j] = recv_data[recv_data_offsets[p] + i * n + j];
     }
   }
 }
