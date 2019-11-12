@@ -28,12 +28,21 @@ IndexMap::IndexMap(MPI_Comm mpi_comm, std::int32_t local_size,
 
   _all_ranges.insert(_all_ranges.begin(), 0);
 
+  std::vector<std::vector<std::int32_t>> send_index(mpi_size);
+  _remotes.resize(mpi_size);
+
   for (std::size_t i = 0; i < ghosts.size(); ++i)
   {
     _ghosts[i] = ghosts[i];
     _ghost_owners[i] = owner(ghosts[i]);
     assert(_ghost_owners[i] != _myrank);
+
+    // Send desired index to remote
+    const int p = _ghost_owners[i];
+    send_index[p].push_back(_ghosts[i] - _all_ranges[p]);
   }
+
+  MPI::all_to_all(_mpi_comm, send_index, _remotes);
 
   // std::set<int> ghost_set(_ghost_owners.data(),
   //                         _ghost_owners.data() + _ghost_owners.size());
@@ -66,18 +75,6 @@ IndexMap::IndexMap(MPI_Comm mpi_comm, std::int32_t local_size,
   // s << "\n---------------";
 
   // std::cout << s.str() << "\n";
-
-  std::vector<std::vector<std::int32_t>> send_index(mpi_size);
-  _remotes.resize(mpi_size);
-
-  // Send desired index to remote
-  for (int i = 0; i < _ghosts.size(); ++i)
-  {
-    int p = _ghost_owners[i];
-    send_index[p].push_back(_ghosts[i] - _all_ranges[p]);
-  }
-
-  MPI::all_to_all(_mpi_comm, send_index, _remotes);
 }
 //-----------------------------------------------------------------------------
 std::array<std::int64_t, 2> IndexMap::local_range() const
@@ -184,8 +181,11 @@ void IndexMap::scatter_fwd_impl(const std::vector<T>& local_data,
   remote_data.resize(n * num_ghosts());
 
   int mpi_size = MPI::size(_mpi_comm);
-  std::vector<std::vector<T>> send_data(mpi_size);
-  std::vector<std::vector<T>> recv_data(mpi_size);
+  std::vector<T> send_data;
+  std::vector<int> send_data_offsets = {0};
+  std::vector<int> send_data_sizes;
+
+  std::vector<T> recv_data(_ghosts.size() * n);
 
   for (int p = 0; p < mpi_size; ++p)
   {
@@ -193,24 +193,33 @@ void IndexMap::scatter_fwd_impl(const std::vector<T>& local_data,
 
     for (std::size_t i = 0; i < rp.size(); ++i)
     {
-      send_data[p].insert(send_data[p].end(), local_data.begin() + rp[i] * n,
-                          local_data.begin() + rp[i] * n + n);
+      send_data.insert(send_data.end(), local_data.begin() + rp[i] * n,
+                       local_data.begin() + rp[i] * n + n);
     }
+    send_data_sizes.push_back(send_data.size() - send_data_offsets.back());
+    send_data_offsets.push_back(send_data.size());
   }
 
-  MPI::all_to_all(_mpi_comm, send_data, recv_data);
+  std::vector<int> recv_data_sizes(mpi_size, 0);
+  for (int i = 0; i < _ghosts.size(); ++i)
+    recv_data_sizes[_ghost_owners[i]] += n;
+  std::vector<int> recv_data_offsets = {0};
+  for (int q : recv_data_sizes)
+    recv_data_offsets.push_back(recv_data_offsets.back() + q);
 
-  std::vector<int> count(mpi_size, 0);
+  MPI_Alltoallv(send_data.data(), send_data_sizes.data(),
+                send_data_offsets.data(), MPI::mpi_type<T>(), recv_data.data(),
+                recv_data_sizes.data(), recv_data_offsets.data(),
+                MPI::mpi_type<T>(), _mpi_comm);
+
   for (int i = 0; i < _ghosts.size(); ++i)
   {
     int p = _ghost_owners[i];
-    std::copy(recv_data[p].begin() + count[p],
-              recv_data[p].begin() + count[p] + n, remote_data.begin() + i * n);
-    count[p] += n;
+    std::copy(recv_data.begin() + recv_data_offsets[p],
+              recv_data.begin() + recv_data_offsets[p] + n,
+              remote_data.begin() + i * n);
+    recv_data_offsets[p] += n;
   }
-
-  for (int p = 0; p < mpi_size; ++p)
-    assert(count[p] == (int)recv_data[p].size());
 }
 //-----------------------------------------------------------------------------
 template <typename T>
