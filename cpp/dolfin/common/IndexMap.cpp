@@ -6,6 +6,7 @@
 
 #include "IndexMap.h"
 #include <algorithm>
+#include <map>
 #include <set>
 #include <vector>
 
@@ -42,39 +43,98 @@ IndexMap::IndexMap(MPI_Comm mpi_comm, std::int32_t local_size,
     send_index[p].push_back(_ghosts[i] - _all_ranges[p]);
   }
 
+  // Use alltoall (global)
   MPI::all_to_all(_mpi_comm, send_index, _remotes);
 
-  // std::set<int> ghost_set(_ghost_owners.data(),
-  //                         _ghost_owners.data() + _ghost_owners.size());
-  // std::vector<int> sources(1, _myrank);
-  // std::vector<int> degrees(1, ghost_set.size());
-  // std::vector<int> dests(ghost_set.begin(), ghost_set.end());
+  // ------------------------------------------------------------
+  // Now repeat using neighbourhood
+  // ------------------------------------------------------------
 
-  // MPI_Dist_graph_create(_mpi_comm, sources.size(), sources.data(),
-  //                       degrees.data(), dests.data(), MPI_UNWEIGHTED,
-  //                       MPI_INFO_NULL, false, &_neighbour_comm);
+  // Find all neighbour counts, both send and receive
+  std::vector<std::int32_t> send_nghosts(mpi_size, 0);
 
-  // int in_degree, out_degree, w;
-  // MPI_Dist_graph_neighbors_count(_neighbour_comm, &in_degree, &out_degree,
-  // &w);
+  for (std::size_t i = 0; i < ghosts.size(); ++i)
+  {
+    _ghosts[i] = ghosts[i];
+    _ghost_owners[i] = owner(ghosts[i]);
+    assert(_ghost_owners[i] != _myrank);
 
-  // sources.resize(in_degree);
-  // dests.resize(out_degree);
-  // MPI_Dist_graph_neighbors(_neighbour_comm, in_degree, sources.data(), NULL,
-  //                          out_degree, dests.data(), NULL);
+    // Send desired index to remote
+    const int p = _ghost_owners[i];
+    ++send_nghosts[p];
+  }
 
-  // std::stringstream s;
+  std::vector<std::int32_t> recv_nghosts(mpi_size);
+  MPI_Alltoall(send_nghosts.data(), 1, MPI_INT, recv_nghosts.data(), 1, MPI_INT,
+               _mpi_comm);
 
-  // s << "RANK = " << _myrank << "\n----------------\n";
-  // s << "Sources(" << in_degree << ") = ";
-  // for (auto& q : sources)
-  //   s << q << " ";
-  // s << "\n---------------\n Dests(" << out_degree << ") = ";
-  // for (auto& q : dests)
-  //   s << q << " ";
-  // s << "\n---------------";
+  std::vector<std::int32_t> neighbours;
+  std::map<std::int32_t, std::int32_t> proc_to_nbr;
+  std::vector<std::int32_t> send_sizes;
+  std::vector<std::int32_t> send_offsets = {0};
+  std::vector<std::int32_t> recv_sizes;
+  std::vector<std::int32_t> recv_offsets = {0};
+  for (std::int32_t p = 0; p < mpi_size; ++p)
+    if (send_nghosts[p] > 0 or recv_nghosts[p] > 0)
+    {
+      proc_to_nbr.insert({p, (int)neighbours.size()});
+      neighbours.push_back(p);
+      send_sizes.push_back(send_nghosts[p]);
+      send_offsets.push_back(send_offsets.back() + send_nghosts[p]);
+      recv_sizes.push_back(recv_nghosts[p]);
+      recv_offsets.push_back(recv_offsets.back() + recv_nghosts[p]);
+    }
 
-  // std::cout << s.str() << "\n";
+  // No communication is needed to build the graph with complete adjacent
+  // information
+  MPI_Dist_graph_create_adjacent(
+      _mpi_comm, neighbours.size(), neighbours.data(), MPI_UNWEIGHTED,
+      neighbours.size(), neighbours.data(), MPI_UNWEIGHTED, MPI_INFO_NULL,
+      false, &_neighbour_comm);
+
+  std::int32_t num_neighbours = neighbours.size();
+  std::vector<int> sources(num_neighbours);
+  std::vector<int> dests(num_neighbours);
+  MPI_Dist_graph_neighbors(_neighbour_comm, num_neighbours, sources.data(),
+                           NULL, num_neighbours, dests.data(), NULL);
+
+  assert(sources == dests);
+
+  int nbr_size = MPI::size(_neighbour_comm);
+  std::stringstream s;
+  s << _myrank << "/" << nbr_size << ": ";
+  for (int q : sources)
+    s << q << " ";
+  s << "\n";
+  std::cout << s.str();
+
+  std::vector<std::int32_t> nbr_send_index(send_offsets.back());
+  std::vector<std::int32_t> nbr_recv_index(recv_offsets.back());
+  std::vector<std::int32_t> count(send_offsets);
+  for (std::size_t i = 0; i < ghosts.size(); ++i)
+  {
+    const int p = _ghost_owners[i];
+    const int np = proc_to_nbr[p];
+    nbr_send_index[count[np]] = _ghosts[i] - _all_ranges[p];
+    ++count[np];
+  }
+
+  MPI_Neighbor_alltoallv(nbr_send_index.data(), send_sizes.data(),
+                         send_offsets.data(), MPI_INT, nbr_recv_index.data(),
+                         recv_sizes.data(), recv_offsets.data(), MPI_INT,
+                         _neighbour_comm);
+
+  s.str("");
+
+  s << "RANK = " << _myrank << "\n----------------\n";
+  for (auto& q : nbr_send_index)
+    s << q << " ";
+  s << "\n---------------\n";
+  for (auto& q : nbr_recv_index)
+    s << q << " ";
+  s << "\n---------------";
+
+  std::cout << s.str() << "\n";
 }
 //-----------------------------------------------------------------------------
 std::array<std::int64_t, 2> IndexMap::local_range() const
