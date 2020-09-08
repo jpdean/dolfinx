@@ -141,6 +141,7 @@ def run_scalar_test(mesh, V, degree):
 
     print("Error assembly time:", t1 - t0)
 
+    print(error)
     # FIXME Is 1.0e-14 correct? M is the error squared, and no square root was
     # taken, so the error should be much smaller.
     assert np.absolute(error) < 1.0e-14
@@ -185,7 +186,7 @@ def run_vector_test(mesh, V, degree):
     assert np.absolute(error) < 1.0e-14
 
 
-def compute_L2_norm(v):
+def compute_L2_norm(v, mesh):
     M = inner(v, v) * dx
     M = fem.Form(M)
     return np.sqrt(mesh.mpi_comm().allreduce(assemble_scalar(M),
@@ -232,8 +233,8 @@ def run_mixed_poisson_test(mesh, V, W, degree):
     e_u = u_exact - u
     e_sigma = sigma_exact - sigma
 
-    L2_error_u = compute_L2_norm(e_u)
-    L2_error_sigma = compute_L2_norm(e_sigma)
+    L2_error_u = compute_L2_norm(e_u, mesh)
+    L2_error_sigma = compute_L2_norm(e_sigma, mesh)
 
     print(f"L2-norm of the error in u = {L2_error_u}")
     print(f"L2-norm of the error in sigma = {L2_error_sigma}")
@@ -426,8 +427,8 @@ def xtest_AA_hex(family, degree, cell_type, datadir):
 
 
 # TODO REMOVE
-mesh = get_mesh(CellType.triangle, "")
-k = 1
-V = FiniteElement("DG", mesh.ufl_cell(), k)
-Q = FiniteElement("RT", mesh.ufl_cell(), k + 1)
-run_mixed_poisson_test(mesh, V, Q, k)
+# mesh = get_mesh(CellType.triangle, "")
+# k = 1
+# V = FiniteElement("DG", mesh.ufl_cell(), k)
+# Q = FiniteElement("RT", mesh.ufl_cell(), k + 1)
+# run_mixed_poisson_test(mesh, V, Q, k)
