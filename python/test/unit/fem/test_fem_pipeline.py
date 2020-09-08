@@ -183,7 +183,9 @@ def run_vector_test(mesh, V, degree):
     assert np.absolute(error) < 1.0e-14
 
 def compute_L2_norm(v):
-    return np.sqrt(mesh.mpi_comm().allreduce(assemble_scalar(inner(v, v) * dx),
+    M = inner(v, v) * dx
+    M = fem.Form(M)
+    return np.sqrt(mesh.mpi_comm().allreduce(assemble_scalar(M),
                                              op=MPI.SUM))
 
 def run_vector_poisson_test(mesh, V, W, degree):
