@@ -236,8 +236,8 @@ def run_mixed_poisson_test(mesh, V, W, degree):
     L2_error_u = compute_L2_norm(e_u, mesh)
     L2_error_sigma = compute_L2_norm(e_sigma, mesh)
 
-    print(f"L2-norm of the error in u = {L2_error_u}")
-    print(f"L2-norm of the error in sigma = {L2_error_sigma}")
+    assert L2_error_u < 1e-13
+    assert L2_error_sigma < 1e-13
 
 
 def run_dg_test(mesh, V, degree):
@@ -347,6 +347,16 @@ def test_RT_N1curl_simplex(family, degree, cell_type, datadir):
 
 
 @parametrize_cell_types_simplex
+@pytest.mark.parametrize("family", ["RT", "BDM"])
+@pytest.mark.parametrize("degree", [1, 2, 3])
+def test_HDiv_simplex(family, degree, cell_type, datadir):
+    mesh = get_mesh(cell_type, datadir)
+    V = FiniteElement("DG", mesh.ufl_cell(), degree)
+    Q = FiniteElement(family, mesh.ufl_cell(), degree + 1)
+    run_mixed_poisson_test(mesh, V, Q, degree)
+
+
+@parametrize_cell_types_simplex
 @pytest.mark.parametrize("family", ["BDM", "N2curl"])
 @pytest.mark.parametrize("degree", [1, 2, 3])
 def test_BDM_N2curl_simplex(family, degree, cell_type, datadir):
@@ -396,6 +406,17 @@ def test_RTC_quad(family, degree, cell_type, datadir):
     run_vector_test(mesh, V, degree)
 
 
+# TODO ADD BDMCF to test
+@parametrize_cell_types_quad
+@pytest.mark.parametrize("family", ["RTCF"])
+@pytest.mark.parametrize("degree", [1, 2, 3])
+def test_HDiv_quad(family, degree, cell_type, datadir):
+    mesh = get_mesh(cell_type, datadir)
+    V = FiniteElement("DQ", mesh.ufl_cell(), degree)
+    Q = FiniteElement(family, mesh.ufl_cell(), degree + 1)
+    run_mixed_poisson_test(mesh, V, Q, degree)
+
+
 # TODO: Implement NC spaces
 @parametrize_cell_types_hex
 @pytest.mark.parametrize("family", ["NCE", "NCF"])
@@ -427,8 +448,8 @@ def xtest_AA_hex(family, degree, cell_type, datadir):
 
 
 # TODO REMOVE
-# mesh = get_mesh(CellType.triangle, "")
+# mesh = get_mesh(CellType.quadrilateral, "")
 # k = 1
-# V = FiniteElement("DG", mesh.ufl_cell(), k)
-# Q = FiniteElement("RT", mesh.ufl_cell(), k + 1)
+# V = FiniteElement("DQ", mesh.ufl_cell(), k)
+# Q = FiniteElement("RTCF", mesh.ufl_cell(), k + 1)
 # run_mixed_poisson_test(mesh, V, Q, k)
