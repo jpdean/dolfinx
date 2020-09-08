@@ -14,15 +14,14 @@ from petsc4py import PETSc
 
 import ufl
 from dolfinx import (DirichletBC, Function, FunctionSpace, fem, cpp,
-                     UnitCubeMesh, UnitSquareMesh, VectorFunctionSpace, solve)
+                     UnitCubeMesh, UnitSquareMesh, VectorFunctionSpace)
 from dolfinx.fem import (apply_lifting, assemble_matrix, assemble_scalar,
                          assemble_vector, locate_dofs_topological, set_bc)
 from dolfinx.cpp.mesh import CellType
 from dolfinx.io import XDMFFile
 from ufl import (SpatialCoordinate, TestFunction, TrialFunction, div, dx, grad,
                  inner, ds, dS, avg, jump, FacetNormal, CellDiameter,
-                 TrialFunctions, TestFunctions, pi, sin, cos, as_vector,
-                 FiniteElement, dot)
+                 TrialFunctions, TestFunctions, FiniteElement, dot)
 
 
 def get_mesh(cell_type, datadir):
@@ -141,6 +140,9 @@ def run_scalar_test(mesh, V, degree):
     t1 = time.time()
 
     print("Error assembly time:", t1 - t0)
+
+    # FIXME Is 1.0e-14 correct? M is the error squared, and no square root was
+    # taken, so the error should be much smaller.
     assert np.absolute(error) < 1.0e-14
 
 
@@ -182,11 +184,13 @@ def run_vector_test(mesh, V, degree):
 
     assert np.absolute(error) < 1.0e-14
 
+
 def compute_L2_norm(v):
     M = inner(v, v) * dx
     M = fem.Form(M)
     return np.sqrt(mesh.mpi_comm().allreduce(assemble_scalar(M),
                                              op=MPI.SUM))
+
 
 def run_mixed_poisson_test(mesh, V, W, degree):
     X = FunctionSpace(mesh, V * W)
@@ -419,6 +423,7 @@ def xtest_AA_hex(family, degree, cell_type, datadir):
     mesh = get_mesh(cell_type, datadir)
     V = FunctionSpace(mesh, (family, degree))
     run_vector_test(mesh, V, degree)
+
 
 # TODO REMOVE
 mesh = get_mesh(CellType.triangle, "")
