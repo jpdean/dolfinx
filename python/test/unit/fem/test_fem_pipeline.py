@@ -22,7 +22,7 @@ from dolfinx.io import XDMFFile
 from ufl import (SpatialCoordinate, TestFunction, TrialFunction, div, dx, grad,
                  inner, ds, dS, avg, jump, FacetNormal, CellDiameter,
                  TrialFunctions, TestFunctions, pi, sin, cos, as_vector,
-                 FiniteElement)
+                 FiniteElement, dot)
 
 
 def get_mesh(cell_type, datadir):
@@ -192,21 +192,36 @@ def run_vector_poisson_test(mesh, V, W, degree):
     (v, tau) = TestFunctions(X)
 
     x = SpatialCoordinate(mesh)
-    u_exact = sin(pi * x[0]) * sin(pi * x[1])
+    n = FacetNormal(mesh)
+    u_exact = x[1]**degree
     f = - div(grad(u_exact))
     a = inner(sigma, tau) * dx + inner(div(tau), u) * dx \
         + inner(div(sigma), v) * dx
-    L = - inner(f, v) * dx
+    L = - inner(f, v) * dx + inner(u_exact, dot(tau, n)) * ds # TODO Check this is integrating over external boundary
 
+    L = fem.Form(L)
+    b = assemble_vector(L)
+    b.ghostUpdate(addv=PETSc.InsertMode.ADD, mode=PETSc.ScatterMode.REVERSE)
+
+    a = fem.Form(a)
+    A = assemble_matrix(a, [])
+    A.assemble()
+
+    # Create LU linear solver
+    solver = PETSc.KSP().create(MPI.COMM_WORLD)
+    solver.setType(PETSc.KSP.Type.PREONLY)
+    solver.getPC().setType(PETSc.PC.Type.LU)
+    solver.setOperators(A)
+
+    # Solve
     sln = Function(X)
-    # TODO Should probably specify PETSc options
-    solve(a == L, sln, [])
+    solver.solve(b, sln.vector)
+    sln.vector.ghostUpdate(addv=PETSc.InsertMode.INSERT, mode=PETSc.ScatterMode.FORWARD)
 
     u = sln.sub(0).collapse()
     sigma = sln.sub(1).collapse()
 
-    sigma_exact = as_vector((pi * cos(pi * x[0]) * sin(pi * x[1]),
-                         pi * sin(pi * x[0]) * cos(pi * x[1])))
+    sigma_exact = grad(u_exact)
     e_u = u_exact - u
     e_sigma = sigma_exact - sigma
 
@@ -404,6 +419,7 @@ def xtest_AA_hex(family, degree, cell_type, datadir):
 
 # TODO REMOVE
 mesh = get_mesh(CellType.triangle, "")
-V = FiniteElement("DG", mesh.ufl_cell(), 0)
-Q = FiniteElement("RT", mesh.ufl_cell(), 1)
-run_vector_poisson_test(mesh, V, Q, 0)
+k = 2
+V = FiniteElement("DG", mesh.ufl_cell(), k)
+Q = FiniteElement("RT", mesh.ufl_cell(), k + 1)
+run_vector_poisson_test(mesh, V, Q, k)
