@@ -197,7 +197,7 @@ def run_vector_poisson_test(mesh, V, W, degree):
     f = - div(grad(u_exact))
     a = inner(sigma, tau) * dx + inner(div(tau), u) * dx \
         + inner(div(sigma), v) * dx
-    L = - inner(f, v) * dx + inner(u_exact, dot(tau, n)) * ds # TODO Check this is integrating over external boundary
+    L = - inner(f, v) * dx + inner(u_exact, dot(tau, n)) * ds
 
     L = fem.Form(L)
     b = assemble_vector(L)
@@ -211,6 +211,7 @@ def run_vector_poisson_test(mesh, V, W, degree):
     solver = PETSc.KSP().create(MPI.COMM_WORLD)
     solver.setType(PETSc.KSP.Type.PREONLY)
     solver.getPC().setType(PETSc.PC.Type.LU)
+    solver.getPC().setFactorSolverType(PETSc.Mat.SolverType.MUMPS)
     solver.setOperators(A)
 
     # Solve
@@ -419,7 +420,7 @@ def xtest_AA_hex(family, degree, cell_type, datadir):
 
 # TODO REMOVE
 mesh = get_mesh(CellType.triangle, "")
-k = 2
+k = 1
 V = FiniteElement("DG", mesh.ufl_cell(), k)
 Q = FiniteElement("RT", mesh.ufl_cell(), k + 1)
 run_vector_poisson_test(mesh, V, Q, k)
