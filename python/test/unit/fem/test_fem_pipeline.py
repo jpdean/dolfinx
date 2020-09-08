@@ -188,7 +188,7 @@ def compute_L2_norm(v):
     return np.sqrt(mesh.mpi_comm().allreduce(assemble_scalar(M),
                                              op=MPI.SUM))
 
-def run_vector_poisson_test(mesh, V, W, degree):
+def run_mixed_poisson_test(mesh, V, W, degree):
     X = FunctionSpace(mesh, V * W)
     (u, sigma) = TrialFunctions(X)
     (v, tau) = TestFunctions(X)
@@ -425,4 +425,4 @@ mesh = get_mesh(CellType.triangle, "")
 k = 1
 V = FiniteElement("DG", mesh.ufl_cell(), k)
 Q = FiniteElement("RT", mesh.ufl_cell(), k + 1)
-run_vector_poisson_test(mesh, V, Q, k)
+run_mixed_poisson_test(mesh, V, Q, k)
