@@ -206,7 +206,7 @@ def run_mixed_poisson_test(mesh, V, W, degree):
     n = FacetNormal(mesh)
     u_exact = x[1]**degree
     f = - div(grad(u_exact))
-    a = inner(sigma, tau) * dx + inner(div(tau), u) * dx \
+    a = inner(sigma, tau) * dx + inner(u, div(tau)) * dx \
         + inner(div(sigma), v) * dx
     L = - inner(f, v) * dx + inner(u_exact, dot(tau, n)) * ds
 
@@ -452,8 +452,8 @@ def xtest_AA_hex(family, degree, cell_type, datadir):
 
 
 # TODO REMOVE
-mesh = get_mesh(CellType.quadrilateral, "")
-k = 1
-V = FiniteElement("DQ", mesh.ufl_cell(), k)
-Q = FiniteElement("RTCF", mesh.ufl_cell(), k + 1)
-run_mixed_poisson_test(mesh, V, Q, k)
+# mesh = get_mesh(CellType.quadrilateral, "")
+# k = 1
+# V = FiniteElement("DQ", mesh.ufl_cell(), k)
+# Q = FiniteElement("RTCF", mesh.ufl_cell(), k + 1)
+# run_mixed_poisson_test(mesh, V, Q, k)
