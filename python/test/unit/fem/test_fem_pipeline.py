@@ -194,6 +194,10 @@ def compute_L2_norm(v, mesh):
 
 
 def run_mixed_poisson_test(mesh, V, W, degree):
+    """Solve a mixed Poisson problem with an exact solution given by
+       u=x[1]**degree, such that the finite element solution for u and
+       the flux sigma = grad(u) are exact.
+    """
     X = FunctionSpace(mesh, V * W)
     (u, sigma) = TrialFunctions(X)
     (v, tau) = TestFunctions(X)
@@ -448,8 +452,8 @@ def xtest_AA_hex(family, degree, cell_type, datadir):
 
 
 # TODO REMOVE
-# mesh = get_mesh(CellType.quadrilateral, "")
-# k = 1
-# V = FiniteElement("DQ", mesh.ufl_cell(), k)
-# Q = FiniteElement("RTCF", mesh.ufl_cell(), k + 1)
-# run_mixed_poisson_test(mesh, V, Q, k)
+mesh = get_mesh(CellType.quadrilateral, "")
+k = 1
+V = FiniteElement("DQ", mesh.ufl_cell(), k)
+Q = FiniteElement("RTCF", mesh.ufl_cell(), k + 1)
+run_mixed_poisson_test(mesh, V, Q, k)
