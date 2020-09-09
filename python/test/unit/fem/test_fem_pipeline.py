@@ -240,8 +240,8 @@ def run_mixed_poisson_test(mesh, V, W, degree):
     L2_error_u = compute_L2_norm(e_u, mesh)
     L2_error_sigma = compute_L2_norm(e_sigma, mesh)
 
-    assert L2_error_u < 1e-13
-    assert L2_error_sigma < 1e-13
+    assert L2_error_u < 1e-10
+    assert L2_error_sigma < 1e-10
 
 
 def run_dg_test(mesh, V, degree):
