@@ -21,7 +21,8 @@ from dolfinx.cpp.mesh import CellType
 from dolfinx.io import XDMFFile
 from dolfinx_utils.test.skips import skip_if_complex
 from ufl import (SpatialCoordinate, TestFunction, TrialFunction, div, dx, grad,
-                 inner, ds, dS, avg, jump, FacetNormal, CellDiameter)
+                 inner, ds, dS, avg, jump, FacetNormal, CellDiameter, sym,
+                 Identity, dot, as_vector)
 
 
 def get_mesh(cell_type, datadir):
@@ -253,143 +254,230 @@ def run_dg_test(mesh, V, degree):
     assert np.absolute(error) < 1.0e-14
 
 
-# Run tests on all spaces in periodic table on triangles and tetrahedra
-@parametrize_cell_types_simplex
-@pytest.mark.parametrize("family", ["Lagrange"])
-@pytest.mark.parametrize("degree", [2, 3, 4])
-def test_P_simplex(family, degree, cell_type, datadir):
-    mesh = get_mesh(cell_type, datadir)
-    V = FunctionSpace(mesh, (family, degree))
-    run_scalar_test(mesh, V, degree)
+def run_dg_vector_test(mesh, V, degree):
+    u = TrialFunction(V)
+    v = TestFunction(V)
+
+    d = mesh.topology.dim
+
+    # Material properties
+    E = 1.0
+    nu = 0.3
+    mu = E / (2.0 * (1.0 + nu))
+    lmbda = E * nu / ((1.0 + nu) * (1.0 - 2.0 * nu))
+
+    # Function to compute the strain
+    def epsilon(v):
+        return sym(grad(v))
+
+    # Function to compute the stress
+    def sigma(v):
+        return 2.0 * mu * epsilon(v) + lmbda * div(v) * Identity(d)
+
+    # Mesh normals and element size
+    n = FacetNormal(mesh)
+    h = CellDiameter(mesh)
+    alpha = 32
+
+    a = inner(sigma(u), epsilon(v)) * dx \
+        - inner(avg(dot(sigma(u), n)), jump(v)) * dS \
+        - inner(jump(u), avg(dot(sigma(v), n))) * dS \
+        + alpha / avg(h) * inner(jump(u), jump(v)) * dS \
+        - inner(dot(sigma(u), n), v) * ds \
+        - inner(u, dot(sigma(v), n)) * ds \
+        + alpha / h * inner(u, v) * ds
+
+    # Exact solution
+    x = SpatialCoordinate(mesh)
+    if d == 2:
+        u_exact = as_vector((x[0]**degree, x[1]**degree))
+    else:
+        u_exact = as_vector((x[0]**degree, x[1]**degree, x[2]**degree))
+
+    # Compute f from exact solution
+    f = - div(sigma(u_exact))
+    L = inner(f, v) * dx - inner(u_exact, dot(sigma(v), n)) * ds \
+        + alpha / h * inner(u_exact, v) * ds
+
+    # Assemble system, applying boundary conditions
+    A = assemble_matrix(a, [])
+    A.assemble()
+
+    b = assemble_vector(L)
+    apply_lifting(b, [a], [[]])
+    b.ghostUpdate(addv=PETSc.InsertMode.ADD, mode=PETSc.ScatterMode.REVERSE)
+
+    # Create solution function
+    u = Function(V)
+
+    # Set solver options
+    opts = PETSc.Options()
+    opts["ksp_type"] = "preonly"
+    opts["pc_type"] = "lu"
+
+    # Create solver
+    solver = PETSc.KSP().create(MPI.COMM_WORLD)
+    solver.setFromOptions()
+
+    # Set matrix operator
+    solver.setOperators(A)
+
+    # Compute solution
+    solver.solve(b, u.vector)
+    solver.view()
+
+    M = (u_exact - u)**2 * dx
+    M = fem.Form(M)
+    error = mesh.mpi_comm().allreduce(assemble_scalar(M), op=MPI.SUM)
+    assert np.absolute(error) < 1.0e-14
 
 
-@parametrize_cell_types_simplex
-@pytest.mark.parametrize("family", ["Lagrange"])
-@pytest.mark.parametrize("degree", [2, 3, 4])
-def test_vector_P_simplex(family, degree, cell_type, datadir):
-    mesh = get_mesh(cell_type, datadir)
-    V = VectorFunctionSpace(mesh, (family, degree))
-    run_vector_test(mesh, V, degree)
+# # Run tests on all spaces in periodic table on triangles and tetrahedra
+# @parametrize_cell_types_simplex
+# @pytest.mark.parametrize("family", ["Lagrange"])
+# @pytest.mark.parametrize("degree", [2, 3, 4])
+# def test_P_simplex(family, degree, cell_type, datadir):
+#     mesh = get_mesh(cell_type, datadir)
+#     V = FunctionSpace(mesh, (family, degree))
+#     run_scalar_test(mesh, V, degree)
+
+
+# @parametrize_cell_types_simplex
+# @pytest.mark.parametrize("family", ["Lagrange"])
+# @pytest.mark.parametrize("degree", [2, 3, 4])
+# def test_vector_P_simplex(family, degree, cell_type, datadir):
+#     mesh = get_mesh(cell_type, datadir)
+#     V = VectorFunctionSpace(mesh, (family, degree))
+#     run_vector_test(mesh, V, degree)
+
+
+# @parametrize_cell_types_simplex
+# @pytest.mark.parametrize("family", ["DG"])
+# @pytest.mark.parametrize("degree", [2, 3])
+# def test_dP_simplex(family, degree, cell_type, datadir):
+#     mesh = get_mesh(cell_type, datadir)
+#     V = FunctionSpace(mesh, (family, degree))
+#     run_dg_test(mesh, V, degree)
 
 
 @parametrize_cell_types_simplex
 @pytest.mark.parametrize("family", ["DG"])
-@pytest.mark.parametrize("degree", [2, 3])
-def test_dP_simplex(family, degree, cell_type, datadir):
-    mesh = get_mesh(cell_type, datadir)
-    V = FunctionSpace(mesh, (family, degree))
-    run_dg_test(mesh, V, degree)
-
-
-@parametrize_cell_types_simplex
-@pytest.mark.parametrize("family", ["RT", "N1curl"])
-@pytest.mark.parametrize("degree", [1, 2, 3, 4])
-def test_RT_N1curl_simplex(family, degree, cell_type, datadir):
-    mesh = get_mesh(cell_type, datadir)
-    V = FunctionSpace(mesh, (family, degree))
-    run_vector_test(mesh, V, degree - 1)
-
-
-@parametrize_cell_types_simplex
-@pytest.mark.parametrize("family", ["BDM", "N2curl"])
 @pytest.mark.parametrize("degree", [1, 2])
-def test_BDM_N2curl_simplex(family, degree, cell_type, datadir):
-    mesh = get_mesh(cell_type, datadir)
-    V = FunctionSpace(mesh, (family, degree))
-    run_vector_test(mesh, V, degree)
-
-
-# Skip slowest test in complex to stop CI timing out
-@skip_if_complex
-@parametrize_cell_types_simplex
-@pytest.mark.parametrize("family", ["BDM", "N2curl"])
-@pytest.mark.parametrize("degree", [3])
-def test_BDM_N2curl_simplex_highest_order(family, degree, cell_type, datadir):
-    mesh = get_mesh(cell_type, datadir)
-    V = FunctionSpace(mesh, (family, degree))
-    run_vector_test(mesh, V, degree)
-
-
-# Run tests on all spaces in periodic table on quadrilaterals and hexahedra
-@parametrize_cell_types_tp
-@pytest.mark.parametrize("family", ["Q"])
-@pytest.mark.parametrize("degree", [2, 3, 4])
-def test_P_tp(family, degree, cell_type, datadir):
-    mesh = get_mesh(cell_type, datadir)
-    V = FunctionSpace(mesh, (family, degree))
-    run_scalar_test(mesh, V, degree)
-
-
-@parametrize_cell_types_tp
-@pytest.mark.parametrize("family", ["Q"])
-@pytest.mark.parametrize("degree", [2, 3, 4])
-def test_vector_P_tp(family, degree, cell_type, datadir):
+def test_vector_dP_simplex(family, degree, cell_type, datadir):
     mesh = get_mesh(cell_type, datadir)
     V = VectorFunctionSpace(mesh, (family, degree))
-    run_vector_test(mesh, V, degree)
+    run_dg_vector_test(mesh, V, degree)
 
 
-# TODO: Implement DPC spaces
-@parametrize_cell_types_quad
-@pytest.mark.parametrize("family", ["DQ"])
-# @pytest.mark.parametrize("family", ["DQ", "DPC"])
-@pytest.mark.parametrize("degree", [1, 2, 3])
-def test_dP_quad(family, degree, cell_type, datadir):
-    mesh = get_mesh(cell_type, datadir)
-    V = FunctionSpace(mesh, (family, degree))
-    run_dg_test(mesh, V, degree)
+# @parametrize_cell_types_simplex
+# @pytest.mark.parametrize("family", ["RT", "N1curl"])
+# @pytest.mark.parametrize("degree", [1, 2, 3, 4])
+# def test_RT_N1curl_simplex(family, degree, cell_type, datadir):
+#     mesh = get_mesh(cell_type, datadir)
+#     V = FunctionSpace(mesh, (family, degree))
+#     run_vector_test(mesh, V, degree - 1)
 
 
-@parametrize_cell_types_hex
-@pytest.mark.parametrize("family", ["DQ"])
-# @pytest.mark.parametrize("family", ["DQ", "DPC"])
-@pytest.mark.parametrize("degree", [1, 2])
-def test_dP_hex(family, degree, cell_type, datadir):
-    mesh = get_mesh(cell_type, datadir)
-    V = FunctionSpace(mesh, (family, degree))
-    run_dg_test(mesh, V, degree)
+# @parametrize_cell_types_simplex
+# @pytest.mark.parametrize("family", ["BDM", "N2curl"])
+# @pytest.mark.parametrize("degree", [1, 2])
+# def test_BDM_N2curl_simplex(family, degree, cell_type, datadir):
+#     mesh = get_mesh(cell_type, datadir)
+#     V = FunctionSpace(mesh, (family, degree))
+#     run_vector_test(mesh, V, degree)
 
 
-@parametrize_cell_types_quad
-@pytest.mark.parametrize("family", ["RTCE", "RTCF"])
-@pytest.mark.parametrize("degree", [1, 2, 3])
-def test_RTC_quad(family, degree, cell_type, datadir):
-    mesh = get_mesh(cell_type, datadir)
-    V = FunctionSpace(mesh, (family, degree))
-    run_vector_test(mesh, V, degree - 1)
+# # Skip slowest test in complex to stop CI timing out
+# @skip_if_complex
+# @parametrize_cell_types_simplex
+# @pytest.mark.parametrize("family", ["BDM", "N2curl"])
+# @pytest.mark.parametrize("degree", [3])
+# def test_BDM_N2curl_simplex_highest_order(family, degree, cell_type, datadir):
+#     mesh = get_mesh(cell_type, datadir)
+#     V = FunctionSpace(mesh, (family, degree))
+#     run_vector_test(mesh, V, degree)
 
 
-@parametrize_cell_types_hex
-@pytest.mark.parametrize("family", ["NCE", "NCF"])
-@pytest.mark.parametrize("degree", [1, 2, 3])
-def test_NC_hex(family, degree, cell_type, datadir):
-    # TODO: Implement higher order NCE/NCF spaces
-    if family == "NCE" and degree >= 3:
-        return
-    if family == "NCF" and degree >= 2:
-        return
-    mesh = get_mesh(cell_type, datadir)
-    V = FunctionSpace(mesh, (family, degree))
-    run_vector_test(mesh, V, degree - 1)
+# # Run tests on all spaces in periodic table on quadrilaterals and hexahedra
+# @parametrize_cell_types_tp
+# @pytest.mark.parametrize("family", ["Q"])
+# @pytest.mark.parametrize("degree", [2, 3, 4])
+# def test_P_tp(family, degree, cell_type, datadir):
+#     mesh = get_mesh(cell_type, datadir)
+#     V = FunctionSpace(mesh, (family, degree))
+#     run_scalar_test(mesh, V, degree)
 
 
-# TODO: Implement BDMCE spaces
-# Note: These are currently not supported in FIAT
-@parametrize_cell_types_quad
-@pytest.mark.parametrize("family", ["BDMCE", "BDMCF"])
-@pytest.mark.parametrize("degree", [1, 2, 3])
-def xtest_BDM_quad(family, degree, cell_type, datadir):
-    mesh = get_mesh(cell_type, datadir)
-    V = FunctionSpace(mesh, (family, degree))
-    run_vector_test(mesh, V, degree)
+# @parametrize_cell_types_tp
+# @pytest.mark.parametrize("family", ["Q"])
+# @pytest.mark.parametrize("degree", [2, 3, 4])
+# def test_vector_P_tp(family, degree, cell_type, datadir):
+#     mesh = get_mesh(cell_type, datadir)
+#     V = VectorFunctionSpace(mesh, (family, degree))
+#     run_vector_test(mesh, V, degree)
 
 
-# TODO: Implement AA spaces
-# Note: These are currently not supported in FIAT
-@parametrize_cell_types_hex
-@pytest.mark.parametrize("family", ["AAE", "AAF"])
-@pytest.mark.parametrize("degree", [1, 2, 3])
-def xtest_AA_hex(family, degree, cell_type, datadir):
-    mesh = get_mesh(cell_type, datadir)
-    V = FunctionSpace(mesh, (family, degree))
-    run_vector_test(mesh, V, degree)
+# # TODO: Implement DPC spaces
+# @parametrize_cell_types_quad
+# @pytest.mark.parametrize("family", ["DQ"])
+# # @pytest.mark.parametrize("family", ["DQ", "DPC"])
+# @pytest.mark.parametrize("degree", [1, 2, 3])
+# def test_dP_quad(family, degree, cell_type, datadir):
+#     mesh = get_mesh(cell_type, datadir)
+#     V = FunctionSpace(mesh, (family, degree))
+#     run_dg_test(mesh, V, degree)
+
+
+# @parametrize_cell_types_hex
+# @pytest.mark.parametrize("family", ["DQ"])
+# # @pytest.mark.parametrize("family", ["DQ", "DPC"])
+# @pytest.mark.parametrize("degree", [1, 2])
+# def test_dP_hex(family, degree, cell_type, datadir):
+#     mesh = get_mesh(cell_type, datadir)
+#     V = FunctionSpace(mesh, (family, degree))
+#     run_dg_test(mesh, V, degree)
+
+
+# @parametrize_cell_types_quad
+# @pytest.mark.parametrize("family", ["RTCE", "RTCF"])
+# @pytest.mark.parametrize("degree", [1, 2, 3])
+# def test_RTC_quad(family, degree, cell_type, datadir):
+#     mesh = get_mesh(cell_type, datadir)
+#     V = FunctionSpace(mesh, (family, degree))
+#     run_vector_test(mesh, V, degree - 1)
+
+
+# @parametrize_cell_types_hex
+# @pytest.mark.parametrize("family", ["NCE", "NCF"])
+# @pytest.mark.parametrize("degree", [1, 2, 3])
+# def test_NC_hex(family, degree, cell_type, datadir):
+#     # TODO: Implement higher order NCE/NCF spaces
+#     if family == "NCE" and degree >= 3:
+#         return
+#     if family == "NCF" and degree >= 2:
+#         return
+#     mesh = get_mesh(cell_type, datadir)
+#     V = FunctionSpace(mesh, (family, degree))
+#     run_vector_test(mesh, V, degree - 1)
+
+
+# # TODO: Implement BDMCE spaces
+# # Note: These are currently not supported in FIAT
+# @parametrize_cell_types_quad
+# @pytest.mark.parametrize("family", ["BDMCE", "BDMCF"])
+# @pytest.mark.parametrize("degree", [1, 2, 3])
+# def xtest_BDM_quad(family, degree, cell_type, datadir):
+#     mesh = get_mesh(cell_type, datadir)
+#     V = FunctionSpace(mesh, (family, degree))
+#     run_vector_test(mesh, V, degree)
+
+
+# # TODO: Implement AA spaces
+# # Note: These are currently not supported in FIAT
+# @parametrize_cell_types_hex
+# @pytest.mark.parametrize("family", ["AAE", "AAF"])
+# @pytest.mark.parametrize("degree", [1, 2, 3])
+# def xtest_AA_hex(family, degree, cell_type, datadir):
+#     mesh = get_mesh(cell_type, datadir)
+#     V = FunctionSpace(mesh, (family, degree))
+#     run_vector_test(mesh, V, degree)
